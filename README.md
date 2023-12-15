@@ -3,6 +3,6 @@
 
 This repository contains the main scripts used in the paper titled
 
-How to ciite this repository?
+How to cite this repository?
 “Leveraging chromatin state transitions for the identification of regulatory networks orchestrating heart regeneration” Published in genome biology 
 What does this reposiroy.

@@ -1,0 +1,175 @@
+---
+title: "01Fig1A_H3K4me3_ANNOT_PEAKS"
+author: "Dr. Julio Domingo Cordero Henriquez ; email=julio.cordero@medma.uni-heidelberg.de"
+paper: "Zebrafish heart Regeneration"
+output: html_document
+---
+<style type="text/css">
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: black;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: black;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Arial", Times, serif;
+  color: black;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+# **General Information of this Script**
+```c                                   
+                              ## **Aim of the Script** 
+
+##### To generate bar plot from annotated ChIP-seq data using homer “annotatepeaks.pl”
+
+## **Input files**
+   ##### 01PEAKS_stage
+      - Folder containing all the annotated peak files.
+
+## **Output files**
+    #### 001_FIG2A_01Fig1A_H3K4me3_ANNOT_PEAKS.pdf
+        - Bar plot from the correlation by clusters.
+
+#### 001_FIG2A_01Fig1A_H3K4me3_ANNOT_PEAKS_fromR.xls
+        - Annotated merged peak file in excel format
+
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE}
+##THANK JESUS ####
+library(openxlsx)
+library(data.table)
+library(edgeR)
+library(dplyr)
+library(doParallel)
+library(BiocParallel)
+library(gam)
+library(foreach)
+library(ggplot2)
+library("RcppArmadillo")
+library(DESeq2)
+library(RColorBrewer)
+library(Rcpp)
+library(org.Hs.eg.db)
+library(org.Mm.eg.db)
+library(plyr)
+library(gplots)
+library(Hmisc)
+library(tidyr)
+
+```
+## Define the Output directory
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+workdir = "./"
+setwd(workdir)
+PTHA1="../03OUTPUT/"
+dir.create(PTHA1)
+PROJECT="01Fig1A_H3K4me3_ANNOT_PEAKS"
+PTHA=paste(PTHA1,PROJECT,"/",sep="")
+
+dir.create(PTHA)
+
+### Distance to denife the  Promoter area of the peaks
+DIS=2000
+DIS2=-2000
+NAME33b<-c("00", "01", "04", "14", "45") 
+```
+
+### LOOP to annotate the peaks in three main genomic regions (PROM=+/- 2kb from TSS, Genobody and Intergenic (>2kb from the genes)d
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+### Path to locate all the peak annotated files. The peak file were annotated with annotatePeaks.pl from homer using the merge gtf files from danRer11 genome from REFSEQ, NONCODE, and EMSENBEL
+WORK="../01DATA/01PEAKS_H3K4me3_ZF_dpci/"
+file.list <- list.files(path=WORK,pattern='*bro_200_001_PEAKS', all.files = T,
+           full.names = T, recursive = T)
+df.list <- lapply(file.list, read.delim)
+NAME3<- data.frame(c( "00dpci","01dpci","04dpci","14dpci","45dpci"))
+
+for(i in 1:length(df.list)) {
+df.list[[i]]$PEAK_ID <- df.list[[i]][,1]
+df.list[[i]]$transcriptId <- df.list[[i]]$Nearest.PromoterID
+  df.list[[i]]$ID <-NAME3[i,1]
+NAME1<- colnames(df.list[[i]][,2:19])
+df.list[[i]] <- subset(df.list[[i]], select=c("ID","PEAK_ID",NAME1) )
+df.list[[i]]<- separate(df.list[[i]], col = Annotation, into = c("Annotation","Annot2"), sep = " ")
+df.list[[i]]<- replace_na(df.list[[i]],list(Annotation="NF"))
+df.list[[i]] <- subset(df.list[[i]], select=c("ID", "PEAK_ID","Annotation","Distance.to.TSS","Nearest.PromoterID") )
+df.list[[i]]$Var2[df.list[[i]]$Distance.to.TSS <= DIS & df.list[[i]]$Distance.to.TSS >=DIS2] <- "01PROM(<2kb)"
+df.list[[i]]$Var3[df.list[[i]]$Distance.to.TSS > DIS] <- "OUT_PROM"
+df.list[[i]]$Var3[df.list[[i]]$Distance.to.TSS < DIS2] <- "OUT_PROM"
+df.list[[i]]$Var2[df.list[[i]]$Annotation=="intron" &  df.list[[i]]$Var3=="OUT_PROM"] <- "02Genebody(>2kb)"
+df.list[[i]]$Var2[df.list[[i]]$Annotation=="exon" &  df.list[[i]]$Var3=="OUT_PROM"] <- "02Genebody(>2kb)"
+df.list[[i]]$Var2[df.list[[i]]$Annotation=="TTS"&  df.list[[i]]$Var3=="OUT_PROM"] <- "02Genebody(>2kb)"
+df.list[[i]]$Var2[df.list[[i]]$Annotation=="Intergenic"&  df.list[[i]]$Var3=="OUT_PROM"] <- "03Interg"
+df.list[[i]]$Var2[df.list[[i]]$Annotation=="NF"] <- "04NF"
+}
+GN5a<- do.call(rbind, df.list)
+CHECK1<- subset(GN5a, Var2=="01PROM(<2kb)" | Var2=="02Genebody(>2kb)" | Var2=="03Interg" )
+GN5d <- subset(GN5a, select=c("ID","Var2") )
+GN5_NF<- data.frame(table(GN5a$ID,GN5a$Var2))
+GN5e<- data.frame(table(CHECK1$ID,CHECK1$Var2))
+MA6 <- GN5e
+colnames(MA6)<- c("SAMPLE", "Var1","Freq")
+head(GN5a,4)
+```
+
+## QUantify the number of regions per dpci
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+MA7<- subset(GN5d, Var2=="04NF" )
+colnames(GN5_NF)<- c("SAMPLE", "Var1","Freq")
+MA7<- GN5_NF
+CO22 <-  c("gold","#4393C3","brown", "gray","darkblue", "black")
+FIL1<- data.matrix(summary(MA6$Freq))
+FIL1a<-as.numeric(round(FIL1[2,1],digits = 2))
+```
+
+## 
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+###option fill is giving the result in percentage and stack in total values
+XL="dpci"
+YL="Peak distribut (%)"
+YL2="number of Peaks"
+BASIC_COL="black"
+SI=14
+GR="Genomic area"
+pdf(file=paste(PTHA,"001_FIG2A_", PROJECT,".pdf",sep=""),width=4, height=2.5) 
+{p1 <- ggplot(MA6, aes(factor(SAMPLE), Freq, fill = factor(Var1))) +  geom_bar(position = "fill",stat = "identity") +    guides(fill = guide_legend(reverse = F)) +   labs(fill = GR) + theme_bw()+   scale_fill_manual(values =CO22) +   scale_fill_manual(values =CO22) +  theme(strip.placement = "outside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,size=SI , face="bold"),axis.text.y=element_text(angle = 0,size=SI , face="bold"), axis.title.y = element_text(angle = 90,size=SI , face="bold"), axis.title.x = element_text(angle = 0,size=SI , face="bold"),panel.border = element_rect(colour = BASIC_COL,  size=2)) + labs(title=paste(PROJECT,sep="" ) , x=XL, y = YL)+ scale_x_discrete(labels=(NAME33b))+ scale_y_continuous(breaks=seq(0,25,0.5))
+print(p1)
+dev.off()}
+```
+
+#### 001_FIG2A_01Fig1A_H3K4me3_ANNOT_PEAKS.pdf
+```{r,fig.dim = c(6, 4),class.source="bg-info"}
+print(p1)
+```
+
+## Output merge Annotated peak files
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+#write.table(GN5a,file=paste(PTHA,"001_FIG2A_", PROJECT,"ANNOT_fromR.txt",sep=""),sep="\t",row.names = F,col.names=T,dec=".",quote = F)
+#write.xlsx(GN5a,file=paste(PTHA,"001_FIG2A_", PROJECT,"ANNOT_fromR",".xlsx",sep=""),overwrite = T)
+
+```
+
+
+
+
+

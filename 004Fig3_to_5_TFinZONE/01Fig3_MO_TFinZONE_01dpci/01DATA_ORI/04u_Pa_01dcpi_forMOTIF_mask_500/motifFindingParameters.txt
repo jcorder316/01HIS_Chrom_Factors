@@ -1,0 +1,1 @@
+cmd = ..//08TSS_Enh_w_04d_wind_06u_EN_Pri_A_R_MOTIS/01dcpi/04u_Pa_01dcpi_forMOTIF.bed danRer11 ..//08TSS_Enh_w_04d_wind_06u_EN_Pri_A_R_MOTIS/01dcpi/04u_Pa_01dcpi_forMOTIF_mask_500 -size 500 -len 8 -h -mask

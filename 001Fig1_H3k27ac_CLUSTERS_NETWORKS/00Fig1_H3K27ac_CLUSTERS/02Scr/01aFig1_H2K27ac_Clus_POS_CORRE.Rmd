@@ -1,0 +1,993 @@
+---
+title: "01aFig1_H2K27ac_Clus_POS_CORRE"
+author: "Dr. Julio Domingo Cordero Henriquez ; email=julio.cordero@medma.uni-heidelberg.de"
+paper: "Zebrafish heart Regeneration"
+output: html_document
+---
+<style type="text/css">
+body{ /* Normal  */
+      font-size: 12px;
+  }
+td {  /* Table  */
+  font-size: 8px;
+}
+h1.title {
+  font-size: 38px;
+  color: black;
+}
+h1 { /* Header 1 */
+  font-size: 28px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 22px;
+  color: black;
+}
+h3 { /* Header 3 */
+  font-size: 18px;
+  font-family: "Arial", Times, serif;
+  color: black;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+
+# **General Information of this Script**
+```c
+                                       ## **Aim of the Script** 
+
+##### To cluster the enrichment of H3K27ac histone modification during the zebrafish heart regeneration.
+
+## **Input files**
+   ##### 02RE_analysis_PRJNA509429_CLUS.csv
+      - RNA_seq matrix from PRJNA509429. They performed RiboZero-RNA-seq at the same time points that the ChIP-seq
+
+   ##### 001MACS2_merg_vs_ROSE_merg.bed	
+      - peaks coordinates from the Individual peaks and the merge peaks after ROSE program. To find Super-enhancers and typical enhancers.
+	
+   ##### 001ANNO_PEAKS_H3K27ac_ZF_ALL_x_BEDTO_SE.bed
+      - All the H3K4me3 peaks were summarized together in one matrix with their respective annotations.
+   ##### 002Samples_H3K27ac_meta.csv
+      - Metadata from the H3K27ac ChIP-seq used in the study.
+
+   ##### MAT_H3K27ac_Zf_danRer11_BWAVE_A.txt
+      - Quantification from the enrichment of H3k27ac by bedtools multicover.
+
+
+## **Output files**
+    #### 001_FIGS1B_01aFig1_H2K27ac_Clus_POS_CORRE_CORR_b_GENE.pdf
+        - Heatmap used in the main figure
+
+#### 002_FIGS1A_01aFig1_H2K27ac_Clus_POS_CORRE_ELBOWL_PLOT.pdf
+        - Bar plot to have an Idea of how specific the proteins among the clusters
+
+#### 003_FIG1B_01aFig1_H2K27ac_Clus_POS_CORRE_CLUS_LINEs.pdf
+        - Line plot from the different clusters.
+#### 005_FIG1D_01aFig1_H2K27ac_Clus_POS_CORRE_SE_by_CL.pdf
+        - Bar plot from dive correlation by clusters.
+#### 006_SUPL_01aFig1_H2K27ac_Clus_POS_CORRECORR_by_CL.pdf
+        - Bar plot from the correlation by clusters.
+#### 007_SPLU_01aFig1_H2K27ac_Clus_POS_CORRE_SEPA_by_CLU.pdf
+        - Bar plot from the correlation by clusters.
+#### forMOTIFs
+        - Folder containing all the peak files to be used for motif search
+```
+
+## Programs to load in R
+```{r,message=FALSE,echo=FALSE,warning=FALSE}
+library(rstatix)
+library(openxlsx)
+library(edgeR)
+library(dplyr)
+library(doParallel)
+library(BiocParallel)
+library(gam)
+library(foreach)
+library(ggplot2)
+library("RcppArmadillo")
+library(DESeq2)
+library(RColorBrewer)
+library(Rcpp)
+library(clusterProfiler)
+library(org.Dr.eg.db)
+library(ggpubr)
+library(plyr)
+library(gplots)
+library(EnrichedHeatmap)
+library(ComplexHeatmap)
+library(tidyr)
+library(circlize)
+library(gridExtra)
+library(data.table)
+library(stats)
+library(gridExtra)
+```
+
+### **Set the working environment and Folder to output the results**
+
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+ workdir = "./"
+setwd(workdir)
+PTHA11="../03OUTPUT/"
+dir.create(PTHA11)
+PROJECT="01aFig1_H2K27ac_Clus_POS_CORRE"
+
+PTHA=paste(PTHA11,PROJECT,"/",sep="")
+PORT=paste(PTHA,"forNGS/",sep="")
+PORT2=paste(PTHA,"forMOTIFs/",sep="") 
+PORT3a=paste(PTHA,"forProfileR/",sep="")
+
+PORT3=paste(PTHA,"forProfileR/","BED_CLU/",sep="")
+PORT4=paste(PTHA,"forProfileR/","TSS_CLU/",sep="") 
+
+dir.create (PTHA)
+dir.create (PORT)
+dir.create (PORT2)
+dir.create (PORT3a)
+dir.create (PORT3)
+dir.create (PORT4)
+TRY="_8kLog2FC_"
+#### FOR VOLCANO
+upcol<- "#8E0152" # magenta from PiyG
+nc<- "#000000" # black
+#downcol<- "#7fbc41" # green from PiyG
+downcol<- "#4c6ced" # green from PiyG
+CC= c(downcol, "lightgray",upcol)
+```
+
+
+### Import RNA_seq matrix from the published data PRJNA509429
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+meta = "../../../00MASTER_Input_FILES/01RNA_seq_ZF_PRJNA509429/02RE_analysis_PRJNA509429_CLUS.csv"
+mat_m = read.delim(meta,header=T,check.names=FALSE, stringsAsFactors=FALSE)
+mat_m$SYMBOL<- mat_m$zfin_id_symbol
+mat_m$Clu_EXP <- mat_m$Clu
+NAME11<- data.frame(colnames(c(mat_m[,2:5],mat_m[,7])))
+NAME11b<- data.frame(colnames(mat_m))
+mat_m<- mat_m[2:nrow(mat_m),]
+
+######## select Log2FC
+mat_m1a<- data.frame(NAME11b[grep("log2fc_*", NAME11b[,1]), ])
+mat_m1a<- t(mat_m1a)
+mat_m11<- data.frame(NAME11b[grep("mean_*", NAME11b[,1]), ])
+mat_m1b<- t(mat_m11[1:4,])
+mat_m1b12<- t(mat_m11[6,])
+mat_m1c <- cbind(mat_m1b,mat_m1b12)
+name5=c("EMSEMBL", "rgd_symbol","ensembl_gene_id","length",mat_m1c)
+NAME_Z<- paste("z",mat_m1c,sep="")
+mat_m3<- subset(mat_m,select=c("SYMBOL","Clu_EXP",mat_m1c))
+mat_m34 = t(scale(t(mat_m3[,3:ncol(mat_m3)])))
+colnames(mat_m34)<- NAME_Z
+mat_m33 <- cbind(mat_m3,mat_m34)
+```
+
+### Load the H3K27ac peak files
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+############ Peaks from H3k27ac total  #######################
+NAME12<- c(1,2,3,7,8,9,11,12,13,14,16,17,18,19:23,25,26)
+NAME12<- c(1,2,3,7,8,9,11,12,13,14,16,17,18,19:23,25,26)
+NAME00<- paste("V",NAME12,sep="")
+NAME01<- c("PEAK_ID2", "chr_SE",	"start_SE",	"end_SE",	"PEAK_ID",	"ID" ,"SYMBOL", "Distance.to.TSS", "EMS",	"length",	"CLU","CHROM", "START","STOP", "REGION_ID","NUM_LOCI","CONSTITUENT_SIZE","Enrich","enhancerRank","ROSE_ID","isSuper")
+
+NAME01<- c("PEAK_ID2", "chr_SE",	"start_SE",	"end_SE",	"PEAK_ID",	"ID" ,"SYMBOL", "Distance.to.TSS", "EMS",	"length",	"CLU","CHROM", "START","STOP", "REGION_ID","NUM_LOCI","CONSTITUENT_SIZE","Enrich","enhancerRank","ROSE_ID","isSuper")
+
+PEAKS11="../01DATA/001MACS2_merg_vs_ROSE_merg.bed"
+
+mat_PEAKS11 = read.table(PEAKS11,header=F,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
+mat_PEAKS11_1<- mat_PEAKS11
+colnames(mat_PEAKS11_1)<- c("CHR_M2_mer","STAR_M2_mer","END_M2_mer","PEAK_ID2","PEAK_ID_M2")
+
+mat_PEAKS11_1u<- mat_PEAKS11_1[!duplicated(mat_PEAKS11_1[c("PEAK_ID2","PEAK_ID_M2")]),] 
+
+PEAKS="../01DATA/001ANNO_PEAKS_H3K27ac_ZF_ALL_x_BEDTO_SE.bed"
+mat_PEAKS2 = read.delim(PEAKS,header=F,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
+mat_PEAKS2$PEAK_ID2<- paste(mat_PEAKS2$V1,mat_PEAKS2$V2,mat_PEAKS2$V3,sep="_")
+
+mat_PEAKS2<- subset(mat_PEAKS2,select=c("PEAK_ID2", NAME00))
+colnames(mat_PEAKS2)<- NAME01
+
+NAME11<- data.frame(colnames(mat_PEAKS2))
+NAME11<- t(NAME11)
+mat_PEAKS2_1<- subset(mat_PEAKS2,select=NAME01)
+mat_PEAKS2_1$Clu<- mat_PEAKS2_1$Clu
+CHECK_NA_PEAK<- subset(mat_PEAKS2_1,PEAK_ID=="chr11_KZ115348v1_alt_132814_133175") 
+CHECK_NA_PEAK633<- subset(mat_PEAKS2_1,PEAK_ID=="chr11_KZ115348v1_alt_132814_133175") 
+```
+
+### Load the count matrix
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+meta = "../01DATA/002Samples_H3K27ac_meta.csv"
+mat_m = read.delim(meta,header=F,check.names=FALSE, stringsAsFactors=FALSE)
+mat_m2 <- t(mat_m)
+name3=c("chr","start","end","BigWIg", mat_m2)
+name3s=c("PEAK_ID", "chr","start","end","EMS", "SYMBOL", "length", mat_m2)
+name3s2=c("PEAK_ID.x", "chr","start","end","EMS", "SYMBOL", "length", mat_m2)
+name4 <- paste("RPKM",mat_m2,sep="")
+```
+
+
+### Load all quantified matrix from bedtools multicoverage
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+adD1 = "../01DATA/MAT_H3K27ac_Zf_danRer11_BWAVE_A.txt"
+#cat("Current file name is:",adD1,"/n")
+mat_adD1 = read.delim(adD1,header=F,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
+colnames(mat_adD1)<- name3
+mat_adD1$PEAK_ID2<- paste(mat_adD1$chr,(mat_adD1$start-1),mat_adD1$end,sep="_")
+mat_adD1$length<- mat_adD1$end-mat_adD1$start
+
+mat_adD1a <- list(mat_adD1,mat_PEAKS2_1) %>%
+  Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="PEAK_ID2"), .)
+#mat_adD1a<- merge(mat_adD1,mat_PEAKS2_1,by="PEAK_ID2")
+NAME11a<- data.frame(colnames(mat_adD1a))
+CHECK1<- data.frame(setdiff(mat_adD1$PEAK_ID2,mat_adD1a$PEAK_ID2))
+colnames(CHECK1)<- "PEAK_ID2"
+CHECK1<- merge(CHECK1,mat_adD1,by="PEAK_ID2")
+
+############ remove all low enriched samples
+NAME11<- data.frame(colnames(mat_adD1a))
+FIL<- data.matrix(summary(mat_adD1$length))
+FIL5<-as.numeric(round(FIL[5,1],digits = 1))
+FIL3<-as.numeric(round(FIL[3,1],digits = 1))
+FIL5b<-as.numeric(round(FIL5/1000,digits = 1))
+FIL3b<-as.numeric(round(FIL3/1000,digits = 1))
+
+mat_adD1b<- subset(mat_adD1a,  select= c("PEAK_ID2","length.x", mat_m2))
+countdata_2 <- as.matrix(mat_adD1b[,3:ncol(mat_adD1b)])
+hist(log10(countdata_2), breaks=100, main="", col="cyan", xlab=expression(Log[10]~"average count"))
+```
+
+## To calculate RPKM from H3K27ac ChIP-seq ###########
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+mat_adD1b <- mat_adD1b[!duplicated(mat_adD1b$PEAK_ID2),]
+row.names(mat_adD1b)<- mat_adD1b$PEAK_ID2
+######################  CALCULATE RPKM  ##################
+totalNumReads_dBGI06_2 <- colSums(mat_adD1b[,3:ncol(mat_adD1b)])
+rpkmdBGI06_2_2ar <- rpkm.default(mat_adD1b[,3:ncol(mat_adD1b)], gene.length = mat_adD1b$length.x ,lib.size= totalNumReads_dBGI06_2, normalized.lib.sizes = TRUE)
+rpkmdBGI06_2_2ar <- data.frame(rpkmdBGI06_2_2ar)
+rsumRPKM <- setDT(rpkmdBGI06_2_2ar, keep.rownames = TRUE)[]
+rsumRPKM$sumRPKM <- rowSums(rsumRPKM[,2:ncol(rsumRPKM)])
+colnames(rsumRPKM) = c("PEAK_ID2",name4,"sumRPKM")
+#################### Calculate the mean of RPKM per condition ##############
+rsumRPKM$mean00<- rowMeans(rsumRPKM[,2:3])
+rsumRPKM$mean01<- rowMeans(rsumRPKM[,4:5])
+rsumRPKM$mean04<- rowMeans(rsumRPKM[,6:7])
+rsumRPKM$mean14<- rowMeans(rsumRPKM[,8:9])
+rsumRPKM$mean45<- rowMeans(rsumRPKM[,10:11])
+######################  Merging all the samples  ########################
+FIL<- data.matrix(summary(rsumRPKM$sumRPKM))
+FIL2<-as.numeric(round(FIL[2,1],digits = 2))
+resddBGI06_2_25 <- list(mat_adD1b,rsumRPKM) %>%
+  Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="PEAK_ID2"), .)
+NAME33b<-c("00", "01", "04", "14", "45") 
+NAME33c<- paste("mean",NAME33b,sep="")
+NAME88<- c("PEAK_ID2",NAME33c, "sumRPKM")
+rsumRPKM2<- subset(resddBGI06_2_25,select=NAME88)
+rownames(rsumRPKM2)<- rsumRPKM2$PEAK_ID2
+
+mat_cm_TMM<- log2(rsumRPKM2[,2:6]+1)
+name4z <- paste("H_zRPKM",NAME33c,sep="")
+mat_cm_TMM_heat = t(scale(t(mat_cm_TMM)))
+colnames(mat_cm_TMM_heat)<- name4z
+mat_cm_TMM_heat1<- data.frame(mat_cm_TMM_heat)
+mat_cm_TMM_heat2 <- setDT(mat_cm_TMM_heat1, keep.rownames = TRUE)[]
+colnames(mat_cm_TMM_heat2)<- c("PEAK_ID2",name4z)
+
+mes_cp_cm_quasy_u2_esc2 <- list(rsumRPKM2,mat_cm_TMM_heat2) %>%
+  Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="PEAK_ID2"), .)
+mes_cp_cm_quasy_u2_esc2 <- mes_cp_cm_quasy_u2_esc2[!duplicated(mes_cp_cm_quasy_u2_esc2$PEAK_ID2),]
+NAME11c<- data.frame(colnames(mes_cp_cm_quasy_u2_esc2))
+
+mat_P<- data.frame(NAME11c[grep("^zRPKM*", NAME11c[,1]), ])
+mat_P<- t(mat_P)
+mat_adD1_1<- merge(mat_cm_TMM_heat2,mat_PEAKS2_1,by="PEAK_ID2" )
+##########   MERGE  with RNA_SEQ
+mat_adD1_1$CLU2<- mat_adD1_1$isSuper
+mat_P<- data.frame(NAME11c[grep("^zRPKM*", NAME11c[,1]), ])
+mat_P<- t(mat_P)
+##########   MERGE  with RNA_SEQ
+mat_adD1<- subset(mat_adD1_1,select=c("PEAK_ID2","SYMBOL","ID", "CLU", "CLU2",name4z))
+MI=length(unique(mat_adD1$CLU))
+mat_adD1$CLU[mat_adD1$CLU == "04NF"] <- "03Interg"
+mat_adD1u<- mat_adD1[!duplicated(mat_adD1[c("PEAK_ID2")]),] 
+mat_adD1u <- mat_adD1[!duplicated(mat_adD1$PEAK_ID2),]
+#table(mat_adD1u$CLU)
+#table(mat_adD1u$CLU2)
+```
+
+### MERGE CLUS from HISTONE to EXPRESSION
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+#length(mat_adD1$PEAK_ID2)
+#length(mat_adD1u$PEAK_ID2)
+##########   MERGE  with RNA_SEQ
+MA1 <- list(mat_m33,mat_adD1) %>%
+  Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="SYMBOL"), .)
+MA2 <- MA1[!duplicated(MA1$SYMBOL),]
+MA1u<- MA1[!duplicated(MA1[c("SYMBOL","CLU")]),] 
+NAME11d<- data.frame(colnames(MA1u))
+
+## Extract name for the histone enrichment
+mat_m1b2<- data.frame(NAME11d[grep("H_zRPKMmean*", NAME11d[,1]), ])
+mat_m1b2<- t(mat_m1b2)
+mat_m1b3<- data.frame(NAME11d[grep("zmean*", NAME11d[,1]), ])
+mat_m1b3<- t(mat_m1b3)
+
+NAME12_MA2<- data.frame(colnames(MA2))
+mat_adD1b<- subset(MA2,select=c("SYMBOL","ID", mat_m1b2, "CLU","CLU2","Clu_EXP"))
+
+NAME55<- c("00","01","04","14","45")
+NAME55b<- c("01","04","14","45")
+
+colnames(mat_adD1b)=c("SYMBOL","ID", NAME55, "CLU","CLU2","Clu_EXP")
+
+mat_RPKM1_5_c <- gather(mat_adD1b, NAME55, key="Sample",value= "log2fc")
+CO<-brewer.pal(n = 8, name = "Dark2")
+
+mat_RPKM1_5_c2<- replace_na(mat_RPKM1_5_c,list(CLU="TO_FIND"))
+
+CHECK_CLU2<- data.frame(unique(mat_RPKM1_5_c$CLU2))
+CHECK_CLU<- data.frame(unique(mat_RPKM1_5_c$CLU))
+
+#table(mat_RPKM1_5_c$Clu)
+### Names ##
+XL<- "dpci"
+YL_EXP="Log2(meanRPKM+1)"
+IP="H3k27ac"
+YL_EXP2="Zscore"
+BASIC_COL="black"
+LE=12
+```
+
+## Spearman`s test Correlation between H2K27ac-ChIP-seq vs RNA-seq
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+NAME11d<- data.frame(colnames(MA1u))
+##extract name for the histone enrichment
+mat_m1b2<- data.frame(NAME11d[grep("H_zRPKMmean*", NAME11d[,1]), ])
+mat_m1b2<- t(mat_m1b2)
+mat_m1b3<- data.frame(NAME11d[grep("zmean*", NAME11d[,1]), ])
+mat_m1b3<- t(mat_m1b3)
+NAME33<- data.frame(table(MA1$CLU))
+MAT12_t<- MA1u
+DIS_list<- list()
+DIS_list1<- list()
+for (i in 1:nrow(MAT12_t)){  
+x<-MAT12_t[i, mat_m1b2]
+y<-MAT12_t[i, mat_m1b3]
+results<-cor.test(as.numeric(x),as.numeric(y), method = "spearman")
+results$CLU<- MAT12_t[i, "CLU"] 
+DIS_list[[i]] <- results$p.value
+DIS_list1[[i]]<- results$estimate
+DIS_list[[i]]$CLU<- MAT12_t[i, "CLU"] 
+}
+pvalue_spear<- do.call(rbind, DIS_list)
+GN5b<- do.call(rbind, DIS_list1)
+#length(pvalue_spear)
+#length(GN5b)
+MAT12_t2<- cbind(MAT12_t,pvalue_spear,GN5b)
+MAT12_t2$COR<- as.numeric(MAT12_t2$V1)
+MAT12_t2$COR<- as.numeric(MAT12_t2$rho)
+
+#summary(MAT12_t2$COR)
+```
+
+
+### 
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+NAME_BRO<- data.frame(table(MAT12_t2$CLU))
+FIL<- data.matrix(summary(MAT12_t2$rho))
+FIL2<-as.numeric(round(FIL[2,1],digits = 2))
+FIL5<-as.numeric(round(FIL[5,1],digits = 2))
+FIL3<- FIL2*-1
+
+MAT12_t2$PV_cor<- as.numeric(MAT12_t2$V1)
+PV_cor<- data.matrix(summary(MAT12_t2$PV_cor))
+PV_cor2<-as.numeric(round(PV_cor [2,1],digits = 2))
+MAT12_t2$Log10P<- log10(MAT12_t2$PV_cor)*(-1)
+FIL25<- data.frame(rbind(FIL2,FIL3))
+DIST1<- list()
+DIST2<- list()
+for(A in 1:length(FIL25[,1])) {
+for(i in 1:length(NAME_BRO[,1])) {
+#print(i)
+#print(A)
+DIST1[[i]]<- subset(MAT12_t2,CLU==NAME_BRO[i,1] & rho>=FIL3 & PV_cor<PV_cor2 )
+#DIST2[[i]]<- subset(MAT12_t2,CLU==NAME_BRO[i,1] & rho<= FIL2 & PV_cor<PV_cor2)
+#DIST1[[i]]$COM<-  paste(NAME_BRO[i,1],FIL3,sep="_")
+#DIST2[[i]]$COM<- paste(NAME_BRO[i,1],FIL2,sep="_")
+DIST1[[i]]$COM<- "01POS"
+#DIST2[[i]]$COM<- "02NEG"
+}
+}
+CHECK23_t <- subset(MAT12_t2,CLU=" " )
+CHECK23_t$COM<- "00TOTAL"
+GN5_1<- do.call(rbind, DIST1)
+#GN5_2<- do.call(rbind, DIST2)
+GN5b2<- rbind(GN5_1,CHECK23_t)
+#summary(MAT12_t2$PV_cor)
+
+C1<- plyr::count(GN5b2, c("CLU", "COM"))
+C1GN5_1<- plyr::count(GN5_1, c("CLU", "COM"))
+
+CHECK22_bro<- subset(MAT12_t2,CLU=="01PROM(<2kb)" & rho>=FIL3 & PV_cor<PV_cor2 )
+CHECK23_me<- subset(MAT12_t2,CLU=="02Genebody(>2kb)" & rho>=FIL3 & PV_cor<PV_cor2 )
+CHECK24_nar<- subset(MAT12_t2,CLU=="03Interg" & rho>=FIL3 & PV_cor<PV_cor2 )
+
+CHECK22_bro2<- subset(MAT12_t2,CLU=="01PROM(<2kb)" & rho<=FIL2 & PV_cor<PV_cor2 )
+CHECK23_me2<- subset(MAT12_t2,CLU=="02Genebody(>2kb)" & rho<=FIL2 & PV_cor<PV_cor2)
+CHECK24_nar2<- subset(MAT12_t2,CLU=="03Interg" & rho<=FIL2 & PV_cor<PV_cor2)
+
+B1<- data.frame(table(CHECK22_bro$CLU))
+B2<- data.frame(table(CHECK23_me$CLU))
+B3<- data.frame(table(CHECK24_nar$CLU))
+B11<- data.frame(table(CHECK22_bro2$CLU))
+B21<- data.frame(table(CHECK23_me2$CLU))
+B31<- data.frame(table(CHECK24_nar2$CLU))
+B_T<- rbind(B1,B2,B3,B11,B21,B31)
+BR<- merge(CHECK22_bro,CHECK22_bro2,by="SYMBOL")
+```
+
+### Correlation by genomic region ###
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+NAME33b<- c("01PROMO","02GENB","03INTERG")
+GN5c<- GN5_1
+
+MA7<- data.frame(table(GN5c$CLU,GN5c$COM))
+colnames(MA7)<- c("CLU","COM","freq")
+MA7<- plyr::count(GN5c, c("CLU", "COM"))
+#length(unique(GN5c$SYMBOL))
+ #GN5cu<- GN5c[!duplicated(GN5c[c("SYMBOL")]),] 
+GN5cu <- GN5c[!duplicated(GN5c$SYMBOL),]
+
+MA7u<- plyr::count(GN5cu, c("CLU", "COM"))
+MA7_t<- plyr::count(CHECK23_t, c("CLU", "COM"))
+CO22_COR <-  c("darkblue","grey","gold","#4393C3","brown", "black")
+XL="H3k27ac peak group"
+YL="Peak distribut (%)"
+YL2="number of Peaks"
+BASIC_COL="black"
+SI=9
+LE=9
+SUM_GENES<- sum(MA7$freq)
+P2<-  ggplot(MA7, aes(factor(CLU), freq, fill = factor(COM))) + geom_bar(position = "fill",stat = "identity") + guides(fill = guide_legend(reverse = F)) +labs(fill = "corr") + theme_bw() + scale_fill_manual(values =CO22_COR) +theme(strip.placement = "outside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,size=SI ,face="bold"),axis.text.y=element_text(angle = 0,size=SI , face="bold"), panel.border = element_rect(colour = "black",  size=2)) + labs(title=paste(SUM_GENES,"genes",PROJECT,sep="_" ) , x=XL, y = YL)+ scale_x_discrete(labels=(NAME33b))
+
+
+P3<-  ggplot(MA7, aes(factor(CLU), freq, fill = factor(COM))) + geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) + labs(fill = "corr") + theme_bw() + scale_fill_manual(values =CO22_COR) + theme(plot.title= element_text(color=BASIC_COL, size=14, face="bold"), axis.text.y= element_text(size=LE, face="bold"),axis.text.x = element_text(size=LE, face="bold"), axis.title.x = element_text(color=BASIC_COL, size=14, face="bold"), axis.title.y = element_text(color=BASIC_COL, size=14, face="bold"), panel.border = element_rect(colour = BASIC_COL, fill=NA, size=2))+ labs(title=paste(SUM_GENES,"genes",PROJECT,sep="_" ) , x=XL, y = YL2)+ scale_x_discrete(labels=(NAME33b))
+
+
+pdf(file=paste(PTHA,"001_", PROJECT,"_CORR_per_REG",".pdf", sep=""),width=5, height=4)  
+print(P3)
+print(P2)
+
+dev.off()
+```
+
+```{r,fig.dim = c(5, 4),class.source="bg-info"}
+#{r,fig.dim = c(5, 6),class.source="bg-info"}
+print(P3)
+```
+
+## normali by GENE name
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+GEN_C1<- sum(MA7u$freq)
+MA7_p<- subset(MA7u,COM=="01POS")
+MA7_n<- subset(MA7u,COM=="02NEG")
+GEN_p1<- sum(MA7_p$freq)
+GEN_n1<- sum(MA7_n$freq)
+pdf(file=paste(PTHA,"001_FIGS1B_",PROJECT,"_CORR_b_GENE",".pdf", sep=""),width=5, height=4)  
+P2s<-  ggplot(MA7u, aes(factor(CLU), freq, fill = factor(COM))) + geom_bar(position = "fill",stat = "identity") +  guides(fill = guide_legend(reverse = F)) +  labs(fill = "corr") + theme_bw() + scale_fill_manual(values =CO22_COR) + theme(strip.placement = "outside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,size=SI , face="bold"),axis.text.y=element_text(angle = 0,size=SI , face="bold"), panel.border = element_rect(colour = "black",  size=2)) + labs(title=paste(GEN_p1,"gen_pos",GEN_n1, "gen_neg","total",GEN_C1,sep="_" ), x=XL, y = "Distri by genes")+ scale_x_discrete(labels=(NAME33b))
+print(P2s)
+
+P3s<-  ggplot(MA7u, aes(factor(CLU), freq, fill = factor(COM))) + geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) +labs(fill = "corr") + theme_bw() + scale_fill_manual(values =CO22_COR) +theme(plot.title= element_text(color=BASIC_COL, size=14, face="bold"), axis.text.y= element_text(size=LE, face="bold"),axis.text.x = element_text(size=LE, face="bold"), axis.title.x = element_text(color=BASIC_COL, size=14, face="bold"), axis.title.y = element_text(color=BASIC_COL, size=14, face="bold"), panel.border = element_rect(colour = BASIC_COL, fill=NA, size=2))+ labs(title=paste(GEN_p1,"gen_pos",GEN_n1, "gen_neg","total",GEN_C1,sep="_" ), x=XL, y = "N° of genes")+ scale_x_discrete(labels=(NAME33b))
+print(P3s)
+dev.off()
+
+```
+
+
+```{r,fig.dim = c(5, 4),class.source="bg-info"}
+#{r,fig.dim = c(5, 6),class.source="bg-info"}
+print(P3s)
+```
+
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+mat_RPKM1_5_c <- subset(GN5c,select=c("CLU","COR","Log10P"))
+mat_RPKM1_5_c2 <- subset(GN5cu,select=c("CLU","COR","Log10P"))
+mes_cp_cm_quasy_u2_esc2<- subset(GN5c,select=c("PEAK_ID2", "SYMBOL","CLU","COR","Log10P", mat_m1b2) )
+name4z<- mat_m1b2
+
+```
+
+## export differentially Correlated matrix
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+#write.xlsx(GN5c,file=paste(PTHA,"001_",  PROJECT,"DIFF_CORR_SPEAR",".xlsx",sep=""),overwrite = T)
+#write.xlsx(GN5cu,file=paste(PTHA,"001_",PROJECT,"DIFF_CORR_SPEAR_UNIQUE",".xlsx",sep=""),overwrite = T)
+```
+
+## to check the correlation 
+
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+## in case you would like to check the correlation by time point
+library(corrplot)
+#CORR_MA <- subset(GN5c,select=c(mat_m1b2[1,3],mat_m1b3))
+#M_s<-cor(CORR_MA, method="spearman")
+#col<- colorRampPalette(c("deeppink", "white", "blue"))(20)
+#corrplot(M_s, method="pie",type="upper",col=col)
+
+### Matrix for clusters
+```
+
+################# CONNECTION WITH THE CLUSTER!!!!  ###############
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE,fig.keep='none'}
+########################Determine number of Clusters Example 2#########################
+wss <- (nrow(mes_cp_cm_quasy_u2_esc2[,name4z])-1)*sum(apply(mes_cp_cm_quasy_u2_esc2[,name4z],2,var))
+for (i in 2:15) wss[i] <- sum(kmeans(mes_cp_cm_quasy_u2_esc2[,name4z], centers=i)$withinss)
+{par(lwd=3)
+plot(1:15, wss, type="b", lwd =3,xlab="Number of Clusters",    ylab="Within groups sum of squares",main=paste(PROJECT, "mat_all","to know how many 
+     Cluster the data could have")) 
+}
+{pdf(file=paste(PTHA,"002_FIGS1A_",PROJECT,"_ELBOWL_PLOT.pdf",sep="")  )
+par(lwd=3)
+plot(1:15, wss, type="b",lwd =3,xlab="Number of Clusters",   ylab="Within groups sum of squares",main=paste(PROJECT, "mat_all","to know how many 
+     Cluster the data could have")) 
+}
+dev.off()
+```
+
+```{r,fig.dim = c(5, 4),class.source="bg-info"}
+plot(1:15, wss, type="b",lwd =3,xlab="Number of Clusters",   ylab="Within groups sum of squares",main=paste(PROJECT, "mat_all","to know how many 
+     Cluster the data could have")) 
+```
+
+## K-MEANS unsupervised clustering 
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE,echo=FALSE}
+##  Use set.seed to set a seed for the random value before doing the clustering.
+MI=6
+## VERY IPORTANT to get the same results
+#library(NbClust)
+CHECKF<- is.na(mes_cp_cm_quasy_u2_esc2[,name4z])
+#CHECKF<- subset(CHECKF,)
+
+set.seed(1)
+clusters <- kmeans(mes_cp_cm_quasy_u2_esc2[,name4z],MI,iter.max=500,algorithm = "Hartigan-Wong") 
+set.seed(1)
+clusters2 <- kmeans(mes_cp_cm_quasy_u2_esc2[,name4z],MI,iter.max=500,algorithm = "Hartigan-Wong")
+
+identical(clusters,clusters2)
+mes_cp_cm_quasy_u2_esc2$Clu <- as.factor(clusters$cluster)
+#str(clusters2)
+str(clusters)
+NAME55<- c("00","01","04","14","45")
+#head(mes_cp_cm_quasy_u2_esc2)
+mes_cp_cm_quasy_u2_esc22<- subset(mes_cp_cm_quasy_u2_esc2,select=c("PEAK_ID2", name4z,"Clu"))
+
+colnames(mes_cp_cm_quasy_u2_esc22)=c("PEAK_ID2", NAME55,"Clu")
+
+mat_RPKM1_5_c11 <- gather(mes_cp_cm_quasy_u2_esc22, NAME55, key="Sample",value= "log2fc")
+
+GN5c_SE<- subset(GN5c,select=c("PEAK_ID2","CLU2","CLU"))
+mat_RPKM1_5_c<- merge(mat_RPKM1_5_c11,GN5c_SE,by="PEAK_ID2")
+colnames(mat_RPKM1_5_c)[2]<- "Clu"
+```
+
+```{r,message=FALSE,class.source="bg-info",warning=FALSE}
+####################################
+data_summary2 <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)}
+#######################################
+df2 <- data_summary2(mat_RPKM1_5_c, varname="log2fc", 
+                    groupnames=c("Sample", "Clu"))
+# Convert dose to a factor variable
+df2$Sample=as.factor(df2$Sample)
+
+CO<-brewer.pal(n = MI, name = "Dark2")
+CO1<-brewer.pal(n = MI, name = "Set2")
+#####################
+XL<- "dpci"
+YL="zscoreLog2_meanRPKM+1"
+IP="H3k27ac"
+BASIC_COL="black"
+XL<- "dpci"
+YL_EXP="Log2(meanRPKM+1)"
+IP="H3k27ac"
+YL_EXP2="Zscore"
+PEAK="Peak group"
+```
+
+
+#### 003_FIG1B_01aFig1_H2K27ac_Clus_POS_CORRE_CLUS_LINEs.pdf
+```{r,fig.dim = c(7, 8),message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+XL<- "dpci"
+YL="zscoreLog2_meanRPKM+1"
+NAME55<- c("00","01","04","14","45")
+## THANK YOU JESUS!!
+p11a<- ggplot(df2, aes(x=Sample, y=log2fc, group= as.factor(Clu),colour=as.factor(Clu))) +geom_line(size=2) + geom_point() + facet_wrap(~Clu, ncol = 1) + geom_smooth(method = 'gam') +theme_classic() +scale_color_manual(name="H3K27ac_CLUs",values=CO) +labs(title=paste("003_FIG1B_", PROJECT,sep="" ) , x=XL, y = YL)+theme(plot.title = element_text(color=BASIC_COL, size=SI, face="bold.italic"),axis.title.x = element_text(color=BASIC_COL, size=SI, face="bold"),axis.title.y = element_text(color=BASIC_COL, size=SI, face="bold"),axis.text.x=element_text(angle = 0, size=SI, face="bold"),axis.text.y=element_text(angle = 0, size=SI, face="bold"))
+
+p11b<- p11a+theme_bw(base_size = 10)+ theme(plot.title = element_text(color=BASIC_COL, size=SI, face="bold.italic"),axis.title.x = element_text(color=BASIC_COL, size=SI, face="bold"),axis.title.y = element_text(color=BASIC_COL, size=SI, face="bold"),axis.text.x=element_text(angle = 0, size=SI, face="bold"),axis.text.y=element_text(angle = 0, size=SI, face="bold"),axis.title = element_text(angle = 0, size=SI, face="bold"))
+
+pdf(file=paste(PTHA,"003_FIG1B_", PROJECT, "_CLUS_LINEs.pdf",sep=""),width = 3.5,height = 7) 
+arrange0b <- ggarrange(p11b,    ncol = 1,nrow =1,common.legend = T, align = c("hv"),legend="right")
+arrange0b1 <- ggarrange( p11a,    ncol = 1,nrow =1,common.legend = T, align = c("hv"),legend="right")
+
+print(arrange0b) 
+print(arrange0b1) 
+dev.off()
+ 
+```
+
+
+
+
+
+
+#### 003_FIG1B_01aFig1_H2K27ac_Clus_POS_CORRE_CLUS_LINEs.pdf
+```{r,fig.dim = c(6, 8),class.source="bg-info"}
+print(arrange0b) 
+#print(arrange0b1)
+```
+
+
+### Print the matrixes for the Histone enrichment 
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+NAME77<- data.frame(t(colnames(mes_cp_cm_quasy_u2_esc22)))
+NAME88b<- c("PEAK_ID2","chr_SE",	"start_SE",	"end_SE","CHROM", "START","STOP", "SYMBOL" ,"ID", "PEAK_ID",  "isSuper",	"Distance.to.TSS")
+#NAME88b<- c("PEAK_ID2","PEAK_ID_M2", "chr_SE",	"start_SE",	"end_SE","CHROM", "START","STOP", "SYMBOL" ,"ID", "PEAK_ID",  "isSuper",	"Distance.to.TSS")
+
+mes_cp_cm_quasy_u2_esc22<- subset(mes_cp_cm_quasy_u2_esc2,select=c("PEAK_ID2",name4z,"Clu"))
+mat_PEAKS2_2<- subset(mat_PEAKS2_1,select=c(NAME88b))
+GN5c22<- subset(GN5c,select=c("SYMBOL","COM"))
+
+GN5c22_2 <- list(GN5c22,mes_cp_cm_quasy_u2_esc2) %>%
+Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="SYMBOL"), .)
+
+colnames(mes_cp_cm_quasy_u2_esc22)<- c("PEAK_ID2",name4z,"Clu")
+MAT11 <- list(mat_PEAKS2_2,GN5c22_2) %>%
+Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="PEAK_ID2"), .)
+
+MAT11b <- list(mat_PEAKS2_2,mes_cp_cm_quasy_u2_esc2,mat_PEAKS11_1) %>%
+Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="PEAK_ID2"), .)
+MAT11b$CLU2<- MAT11b$isSuper
+MAT11b$PEAK_ID_SE <- paste(MAT11b$PEAK_ID,MAT11b$CLU2,sep="_")
+MAT11b$COM<- "01POS"
+MAT11u3b<- MAT11b[!duplicated(MAT11b[c("PEAK_ID_M2","PEAK_ID2")]),] 
+MAT11u1<- MAT11b[!duplicated(MAT11b[c("PEAK_ID_SE","PEAK_ID2")]),] 
+
+length(unique(MAT11u1$SYMBOL.x))
+length(unique(MAT11u1$SYMBOL.y))
+
+colnames(MAT11u1)[8]<- "SYMBOL"
+colnames(MAT11)[8]<- "SYMBOL"
+
+MAT12 <- list(mat_m33,MAT11u1) %>%
+Reduce(function(dtf1,dtf2) inner_join(dtf1,dtf2,by="SYMBOL"), .)
+NAME_PEAKS<- c("PEAK_ID2",	"chr_SE",	"start_SE",	"end_SE",	"SYMBOL.x",	"ID",	"PEAK_ID",	"isSuper",	"Distance.to.TSS",		"CLU",	"COR",	"Log10P",	"H_zRPKMmean00",	"H_zRPKMmean01",	"H_zRPKMmean04",	"H_zRPKMmean14",	"H_zRPKMmean45",	"Clu",	"CLU2",	"COM")
+
+NAME_PEAKS2<- c("SYMBOL.x",	"Clu")
+
+MAT11u <- MAT11u1[!duplicated(MAT11u1$PEAK_ID2),]
+#write.table(MAT11u1, file=paste(PTHA,"001c_",PROJECT,"Matrix_ZSCORE.csv",sep=""), dec=".",sep="\t",col.names=T,row.names=F,quote = F)
+#write.table(MAT12, file=paste(PTHA,"001c_", PROJECT,"Matrix_ALL.csv",sep=""), dec=".",sep="\t",col.names=T,row.names=F,quote = F)
+#write.xlsx(MAT11u1, file=paste(PTHA,"001c_", PROJECT,"_PEAKS",".xlsx",sep=""), overwrite = T)
+#write.xlsx(MAT12,file=paste(PTHA,"001c_",PROJECT,"_ALL2",".xlsx",sep=""), overwrite = T)
+CORR_MA <- subset(GN5c,select=c(mat_m1b2[1,3],mat_m1b3))
+```
+#### Bed files to use for MOTIFS search
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=T}
+DIS_TT<- list()
+NAME_ENH<- data.frame(table(MAT11u3b$Clu))
+NAME_M<- c("CHR_M2_mer","STAR_M2_mer","END_M2_mer","PEAK_ID2","Clu")
+
+NAME_M2<- c("chr_SE","start_SE","end_SE","PEAK_ID2","Clu")
+for(i in 1:length(NAME_ENH$Var1)) {
+#print(i)
+MA499u1<- subset(MAT11u3b,Clu==NAME_ENH[i,1],select=NAME_M)
+DIS_TT [[i]]<- subset(MAT11u3b,Clu==NAME_ENH[i,1],select=NAME_M)
+
+write.table(MA499u1,file=paste(PORT2,  "Clu",NAME_ENH[i,1],"_M2.bed",sep=""),sep="\t",row.names = F,col.names=F,dec=".",quote = F)
+}
+
+GN_CHE<- do.call(rbind, DIS_TT)
+MA_CHE<- data.frame(table(GN_CHE$Clu))
+#head(MA_CHE)
+```
+
+
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+##MAT11_m=paste(PTHA,"001c_", PROJECT,"Matrix_ALL.csv",sep="")
+#MAT11 = read.table(MAT11_m,header=T,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
+#paste(PTHA,"001c_", PROJECT,"Matrix_ALL.csv",sep="")
+```
+
+### Add the Peak ID from the H3k27ac peaks called from MACS2
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+MAT11u3b<- MAT11b[!duplicated(MAT11b[c("PEAK_ID_M2","PEAK_ID2")]),] 
+MAT11u1<- MAT11b[!duplicated(MAT11b[c("PEAK_ID_SE","PEAK_ID2")]),] 
+```
+
+
+## to perform the peaks per clusters
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+PEAKS_per_CLUS<- data.frame(table(mes_cp_cm_quasy_u2_esc2$Clu))
+PEAKS_per_CLUS1<- plyr::count(MAT11u3b, c("Clu"))
+
+colnames(PEAKS_per_CLUS)<- c("clus","n_of_peaks")
+#write.xlsx(PEAKS_per_CLUS,file=paste(PTHA,"000_",  PROJECT,"_PEAKS_per_CLUS",".xlsx",sep=""),overwrite = T)
+#write.xlsx(PEAKS_per_CLUS1,file=paste(PTHA,"000_",  PROJECT,"_PEAKS_per_CLUS1",".xlsx",sep=""),overwrite = T)
+```
+
+##### Barplots for the region and Peak size
+```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
+NAME44<- data.frame(colnames(MAT11u1))
+mat_adD12 <- subset(MAT11u1,select=c("PEAK_ID2","Clu","ID","CLU","CLU2","COM"))
+MA6<- data.frame(table(mat_adD12$CLU,mat_adD12$ID,mat_adD12$Clu))
+
+MA6<- data.frame(table(MAT11u1$CLU,MAT11u1$ID,MAT11u1$Clu))
+   
+MA7<- data.frame(table(MAT11u1$CLU2,MAT11u1$ID,MAT11u1$Clu))
+
+MA9<- data.frame(table(MAT11u1$COM,MAT11u1$ID,MAT11u1$Clu))
+MA10<- data.frame(table(MAT11u1$COM,MAT11u1$ID,MAT11u1$Clu,MAT11u1$CLU))
+MA10$Var5<- paste(MA10$Var4,MA10$Var1,sep="_")
+
+NAME_BRO<- data.frame(table(MA10$Var4))
+MA10_1<- subset(MA10,Var4==NAME_BRO[1,1])
+MA10_2<- subset(MA10,Var4==NAME_BRO[2,1])
+MA10_3<- subset(MA10,Var4==NAME_BRO[3,1])
+```
+### Settings for the barplots ###
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+XL="dpci"
+YL="Peak distribu (%)"
+YL2="Peak group"
+GENO="Genomic region"
+YL_n<- "N° of peaks"
+CO23 <-  c("#b35806","#3288bd","brown" ,"darkblue", "black")
+
+NAME33b<-c("00", "01", "04", "14", "45") 
+PROM="gold"
+GENBODY="#4393C3"
+INTER="brown"
+NF="#31a354"
+ CO22 <-  c(PROM,GENBODY,INTER, "gray")
+CO22 <-  c(PROM,GENBODY,INTER)
+BROAD="#4d004b"
+MEDIUM="#8c6bb1"
+NARROW="#9ebcda"
+```
+
+## PLOTS vertical from SE and Typical enhancer (TYE) ####
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+p6 <- ggplot(MA6, aes(factor(Var2), Freq, fill = factor(Var1))) + geom_bar(position = "fill",stat = "identity") +  guides(fill = guide_legend(reverse = F)) +  labs(fill = GENO)+   theme_bw()+   scale_fill_manual(values =CO22) + theme(strip.placement = "inside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"), axis.title.y = element_text(color=BASIC_COL, size=10, face="bold"),axis.title.x = element_text(color=BASIC_COL, size=10, face="bold")) + labs(title=paste(PROJECT,sep="" ) , x=XL, y = YL)+ scale_x_discrete(labels=NAME33b)+   facet_wrap(~Var3, ncol = 1,strip.position="top")
+
+p6b <- ggplot(MA6, aes(factor(Var2), Freq, fill = factor(Var1))) +geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) +  labs(fill = GENO)+   theme_bw()+   scale_fill_manual(values =CO22) +  theme(strip.placement = "inside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"), axis.title.y = element_text(color=BASIC_COL, size=10, face="bold"),axis.title.x = element_text(color=BASIC_COL, size=10, face="bold")) + labs(title=paste(PROJECT,sep="" ) , x=XL, y = YL_n)+ scale_x_discrete(labels=NAME33b)+   facet_wrap(~Var3, ncol = 1,strip.position="top")
+
+p6c <- ggplot(MA7, aes(factor(Var2), Freq, fill = factor(Var1))) + geom_bar(position = "fill",stat = "identity") +    guides(fill = guide_legend(reverse = F)) +  labs(fill = YL2)+ theme_bw()+ scale_fill_manual(values =CO23) +  theme(strip.placement = "inside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"), axis.title.y = element_text(color=BASIC_COL, size=10, face="bold"),axis.title.x = element_text(color=BASIC_COL, size=10, face="bold")) + labs(title=paste(PROJECT,sep="" ) , x=XL, y = YL)+ scale_x_discrete(labels=NAME33b)+  facet_wrap(~Var3, ncol =1,strip.position="top")
+
+p6d <- ggplot(MA7, aes(factor(Var2), Freq, fill = factor(Var1))) +  geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) +  labs(fill = YL2)+   theme_bw()+   scale_fill_manual(values =CO23) + theme(strip.placement = "inside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=10, face="bold"),   axis.title.y = element_text(color=BASIC_COL, size=10, face="bold"),axis.title.x = element_text(color=BASIC_COL, size=10, face="bold")) + labs(title=paste(PROJECT,sep="" ) , x=XL, y =YL_n)+ scale_x_discrete(labels=NAME33b)+   facet_wrap(~Var3, ncol = 1,strip.position="top")
+
+
+
+pdf(file=paste(PTHA,"005_FIG1D_", PROJECT,"_SE_by_CL",".pdf", sep=""),width=3.5, height=7)  
+arrange1 <- ggarrange(p6,p6b,  ncol = 2,nrow =1,common.legend = T, align = c("hv"),legend="right")
+arrange1d <- ggarrange(p6c,  ncol = 1,nrow =1,common.legend = T, align = c("hv"),legend="right")
+arrange1d1 <- ggarrange(p6,  ncol = 1,nrow =1,common.legend = T, align = c("hv"),legend="right")
+
+print(arrange1) 
+print(arrange1d) 
+print(arrange1d1) 
+dev.off()
+```
+
+
+```{r,fig.dim = c(7, 9),class.source="bg-info"}
+#print(arrange1d)  
+#print(arrange1d1) 
+
+```
+
+
+
+## CORR by CLUSTER
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE,fig.keep='none'}
+CO22_COR <-  c("darkblue","grey","gold","#4393C3","brown", "black")
+YL3<- "distr of peaks (%)"
+p9 <- ggplot(MA9, aes(factor(Var2), Freq, fill = factor(Var1))) +geom_bar(position = "fill",stat = "identity") +guides(fill = guide_legend(reverse = F)) +labs(fill = "corr")+ theme_bw() +   scale_fill_manual(values =CO22_COR)+  scale_y_continuous(breaks = c(0,0.25,0.75)) +  theme(strip.placement = "inside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.x = element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.y=element_text(angle = 90,color=BASIC_COL, size=SI, face="bold"),panel.border = element_rect(colour = BASIC_COL,  size=2)) + labs(title=paste(PROJECT,sep="" ) , x=XL, y = YL3)+ scale_x_discrete(labels=NAME33b)+     facet_wrap(~Var3, ncol = MI,strip.position="top")
+
+p91 <- ggplot(MA9, aes(factor(Var2), Freq, fill = factor(Var1))) +geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) +  labs(fill = "corr")+ theme_bw() + scale_fill_manual(values =CO22_COR)+  scale_y_continuous(breaks = c(0,5000,10000)) +  theme(strip.placement = "inside",strip.text.y.left =element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.x = element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.y=element_text(angle = 90,color=BASIC_COL, size=SI, face="bold"),panel.border = element_rect(colour = BASIC_COL,  size=2)) + labs(title=paste(PROJECT,sep="" ) , x=XL, y = YL2)+ scale_x_discrete(labels=NAME33b)+ facet_wrap(~Var3, ncol = MI,strip.position="top")
+
+{pdf(file=paste(PTHA,"006_SUPL_",PROJECT,"CORR_by_CL",".pdf", sep=""),width=10, height=7)  
+
+  arrange1 <- ggarrange(p9,p91,   ncol = 1,nrow =2,common.legend = T, align = c("hv"),legend="top")
+print(arrange1)            
+dev.off()
+}
+```
+
+
+
+
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE,fig.keep='none'}
+p10 <- ggplot(MA10_1, aes(factor(Var2), Freq, fill = factor(Var1))) +geom_bar(position = "stack",stat = "identity") +  guides(fill = guide_legend(reverse = F)) +   labs(fill = "corr")+ theme_bw() +   scale_fill_manual(values =CO22_COR) +  theme(strip.placement = "inside",strip.text.y.left = element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=SI,face="bold"),axis.title.x = element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.y=element_text(angle = 90,color=BASIC_COL, size=SI,face="bold"),panel.border = element_rect(colour = BASIC_COL,  size=2)) + labs(title=paste(IP ,"_on_",NAME_BRO[1,1],sep="" ) , x=XL, y = YL2)+ scale_x_discrete(labels=NAME33b)+     facet_wrap(~Var3, ncol = 8,strip.position="top",scales = "free")
+  print(p10)
+  
+p102 <- ggplot(MA10_2, aes(factor(Var2), Freq, fill = factor(Var1))) +  geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) +labs(fill = "corr")+     theme_bw() +   scale_fill_manual(values =CO22_COR)+  theme(strip.placement = "inside",strip.text.y.left =element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.x = element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.y=element_text(angle = 90,color=BASIC_COL, size=SI, face="bold"),panel.border = element_rect(colour = BASIC_COL,  size=2)) + labs(title=paste(IP ,"_on_", NAME_BRO[2,1],sep="" ) , x=XL, y = YL2)+ scale_x_discrete(labels=NAME33b)+facet_wrap(~Var3, ncol = 8,strip.position="top",scales = "free")
+  
+  p103 <- ggplot(MA10_3, aes(factor(Var2), Freq, fill = factor(Var1))) +geom_bar(position = "stack",stat = "identity") +guides(fill = guide_legend(reverse = F)) +    labs(fill = "corr")+     theme_bw() +   scale_fill_manual(values =CO22_COR)+  theme(strip.placement = "inside",strip.text.y.left =element_text(angle=0),axis.text.x=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.text.y=element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.x = element_text(angle = 0,color=BASIC_COL, size=SI, face="bold"),axis.title.y=element_text(angle = 90,color=BASIC_COL, size=SI, face="bold"),panel.border = element_rect(colour = BASIC_COL,  size=2)) + labs(title=paste(IP ,"_on_",NAME_BRO[3,1],sep="" ) , x=XL, y = YL2)+ scale_x_discrete(labels=NAME33b)+  facet_wrap(~Var3, ncol = 8,strip.position="top",scales = "free")
+  
+  {pdf(file=paste(PTHA,"007_SPLU_",PROJECT,"_SEPA_by_CLU",".pdf",sep=""),width=8 , height=5)  
+arrange11 <- ggarrange(p10,p102,p103, ncol = 1,nrow =3,common.legend = T, align = c("hv"),legend="right")
+
+print(arrange11)            
+dev.off()
+}
+```
+
+
+### Correlation of peak by cluster by genome area (Promoter, Genebody and Intergenic) ###
+
+```{r,fig.dim = c(7, 9),class.source="bg-info"}
+ print(arrange11)  
+```
+
+
+### for NGSPLot program, we export the EMSEMBL; it was not used in this manuscript. However, the script produce these files to potentially used for other experiments
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+G1 <- bitr(mes_cp_cm_quasy_u2_esc2$SYMBOL, fromType="SYMBOL", toType=c("ENSEMBL"), OrgDb="org.Dr.eg.db")
+G2<- merge(G1, mes_cp_cm_quasy_u2_esc2, by="SYMBOL")
+NAME_ENH<- data.frame(table(G2$Clu))
+for(i in 1:length(G2$Var1)) {
+#print(i)
+MA499u2<- subset(G2, Clu==NAME_ENH[i,1])
+write.table(MA499u2$ENSEMBL,file=paste(PORT,PROJECT,"CLu",i,".txt",sep=""),sep="\t",row.names = F,col.names=F,dec=".",quote = F)
+}
+```
+
+
+
+
+#### for profileR ####
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+#head(MAT11u)
+PEAKS="../../../00MASTER_Input_FILES/02TSS_ZF_DanRer11_NON/001Emsem_danRer11_TSS2kb_Annot.bed"
+mat_TSS = read.table(PEAKS,header=F,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
+#head(mat_TSS)
+colnames(mat_TSS)[5]<- "EMS"
+colnames(mat_TSS)[4]<- "SYMBOL"
+colnames(MAT11u3b)[8]<- "SYMBOL"
+
+#MAT11u <- MAT11u3b[!duplicated(MAT11u3b$PEAK_ID2),]
+MAT11u_TSS<- merge(MAT11u3b,mat_TSS,by="SYMBOL")
+MAT11u_TSS2<- subset(MAT11u_TSS,select=c("V1","V2","V3","SYMBOL","Clu","CLU"))
+#length(unique(MAT11u_TSS$PEAK_ID2))
+NAME_ENHTSS<- data.frame(table(MAT11u_TSS2$Clu))
+NAME_ENHPEAK<- data.frame(table(MAT11u$CLU,MAT11u$Clu))
+NAME_ENHPEAK2<- data.frame(table(MAT11$CLU,MAT11$Clu))
+NAME_ENHPEAK<- data.frame(table(MAT11$CLU,MAT11$Clu))
+for(i in 1:length(NAME_ENHTSS$Var1)) {
+#print(i)
+MA499u1<- subset(MAT11u_TSS2,Clu==NAME_ENHTSS[i,1],select=c("V1","V2","V3"))
+MA499u1out<- subset(MAT11u,Clu==NAME_ENHTSS[i,1] & CLU=="03Interg" | CLU=="02Genebody(>2kb)",select=c("CHROM","START","STOP"))
+MA499u1outBED<- subset(MAT11u,Clu==NAME_ENHTSS[i,1] ,select=c("CHROM","START","STOP"))
+
+write.table(MA499u1,file=paste(PORT4,  "Clu",NAME_ENHTSS[i,1],"_TSS.bed",sep=""),sep="\t",row.names = F,col.names=F,dec=".",quote = F)
+write.table(MA499u1out,file=paste(PORT3, "Clu",NAME_ENHTSS[i,1],"_PEAK_outsideTSS.bed",sep=""),sep="\t",row.names = F,col.names=F,dec=".",quote = F)
+write.table(MA499u1outBED,file=paste(PORT3, "Clu",NAME_ENHTSS[i,1],"_PEAK.bed",sep=""),sep="\t",row.names = F,col.names=F,dec=".",quote = F)
+}
+```
+
+## GO analysis by cluster
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+differ_2 = subset(mes_cp_cm_quasy_u2_esc2,  select= c("SYMBOL","Clu"))
+#head (differ_2)
+colnames(differ_2)= c("SYMBOL","clu")
+#length(unique(mes_cp_cm_quasy_u2_esc2$SYMBOL))
+differ_3 <- bitr(mes_cp_cm_quasy_u2_esc2$SYMBOL, fromType="SYMBOL", toType=c("ENTREZID"), OrgDb="org.Dr.eg.db")
+differ_4 = merge(differ_3,differ_2, by= "SYMBOL")
+differ_4_u <- differ_4[!duplicated(differ_4$SYMBOL),]
+colnames(differ_4)= c("SYMBOL", "Entrez","clu")
+differ_4_1 = subset(differ_4, clu=="1")
+differ_4_2 = subset(differ_4, clu=="2")
+differ_4_3 = subset(differ_4, clu=="3")
+differ_4_4 = subset(differ_4, clu=="4")
+differ_4_5 = subset(differ_4, clu=="5")
+differ_4_6 = subset(differ_4, clu=="6")
+
+formula_resddBGI11FC1_25_1_5_bonfe <- compareCluster(Entrez~clu, data=differ_4,fun = "enrichGO",OrgDb="org.Dr.eg.db", ont= "BP", pAdjustMethod= "bonferroni",pvalueCutoff  = 0.05,qvalueCutoff  = 0.05,readable = T)
+
+GO00<- dotplot(formula_resddBGI11FC1_25_1_5_bonfe,showCategory=5, title=paste(PROJECT, TRY,"_bonferro_test",sep=""))
+
+formula_resddBGI11FC1_25_1_5_FDR <- compareCluster(Entrez~clu, data=differ_4,fun = "enrichGO",OrgDb="org.Dr.eg.db", ont = "BP",pAdjustMethod = "fdr", pvalueCutoff  = 0.05,qvalueCutoff  = 0.1, readable = T)
+GO001<- GO00+ theme(plot.title = element_text(color=BASIC_COL, size=SI, face="bold.italic"),axis.title.x = element_text(color=BASIC_COL, size=SI, face="bold"),axis.title.y = element_text(color=BASIC_COL, size=SI, face="bold"),axis.text.x=element_text(angle = 0, size=SI, face="bold"),axis.text.y=element_text(angle = 0, size=SI, face="bold"))
+
+GO00b<- dotplot(formula_resddBGI11FC1_25_1_5_FDR,showCategory=5, title=paste(PROJECT, TRY,"_FDR_test",sep=""))
+
+GO00b1<- GO00b+ theme(plot.title = element_text(color=BASIC_COL, size=SI, face="bold.italic"),axis.title.x = element_text(color=BASIC_COL, size=SI, face="bold"),axis.title.y = element_text(color=BASIC_COL, size=SI, face="bold"),axis.text.x=element_text(angle = 0, size=SI, face="bold"),axis.text.y=element_text(angle = 0, size=SI, face="bold"))
+
+ewp_1 <- clusterProfiler::enrichGO(gene=differ_4_1[[2]], pAdjustMethod="BH", keyType = "ENTREZID",OrgDb="org.Dr.eg.db",readable = T,   ont="BP",     pvalueCutoff = 0.05)
+
+ewp_2 <- clusterProfiler::enrichGO(gene=differ_4_2[[2]], pAdjustMethod="BH", keyType = "ENTREZID",OrgDb="org.Dr.eg.db",readable = T,   ont="BP",     pvalueCutoff = 0.05)
+
+ewp_3 <- clusterProfiler::enrichGO(gene=differ_4_3[[2]],pAdjustMethod="BH", keyType = "ENTREZID",OrgDb="org.Dr.eg.db",readable = T,   ont="BP",     pvalueCutoff = 0.05)
+
+ewp_4 <- clusterProfiler::enrichGO( gene=differ_4_4[[2]], pAdjustMethod="BH", keyType = "ENTREZID",OrgDb="org.Dr.eg.db",readable = T,   ont="BP",     pvalueCutoff = 0.05)
+
+ewp_5 <-clusterProfiler::enrichGO(gene=differ_4_5[[2]], pAdjustMethod="BH", keyType = "ENTREZID",OrgDb="org.Dr.eg.db",readable = T,   ont="BP",     pvalueCutoff = 0.05)
+
+ewp_6 <-clusterProfiler::enrichGO(gene=differ_4_6[[2]], pAdjustMethod="BH", keyType = "ENTREZID",OrgDb="org.Dr.eg.db",readable = T,   ont="BP",     pvalueCutoff = 0.05)
+
+ewp_1@result$FDR2<- -log10(ewp_1@result$p.adjust )
+GO04_1<- ggplot(ewp_1@result[1:10,], aes(x=reorder(Description, FDR2),FDR2,  fill=FDR2)) +    geom_bar(stat = "identity") +    coord_flip() +    scale_fill_continuous(low="blue", high="deeppink") +    labs(x = "", y = "", fill = "FDR2",title = paste(PROJECT,"enrichGO_TOP10_BP_c1",sep="")) + theme_classic() +    theme(axis.text=element_text(size=11))  + ggtitle(paste(PROJECT,"enrichGO_TOP5_BP_c1",sep=""))
+ 
+ewp_2@result$FDR2<- -log10(ewp_2@result$p.adjust )
+GO04_2<- ggplot(ewp_2@result[1:10,], aes(x=reorder(Description, FDR2),FDR2,  fill=FDR2)) +    geom_bar(stat = "identity") +    coord_flip() +    scale_fill_continuous(low="blue", high="deeppink") +    labs(x = "", y = "", fill = "FDR2",title = paste(PROJECT,TRY,"enrichGO_c2")) + theme_classic() +    theme(axis.text=element_text(size=11))  + ggtitle(paste(PROJECT,"enrichGO_TOP5_BP_c2",sep=""))
+
+ewp_3@result$FDR2<- -log10(ewp_3@result$p.adjust )
+GO04_3<- ggplot(ewp_3@result[1:10,], aes(x=reorder(Description, FDR2),FDR2,  fill=FDR2)) +    geom_bar(stat = "identity") +    coord_flip() +    scale_fill_continuous(low="blue", high="deeppink") +    labs(x = "", y = "", fill = "FDR2",title = paste(PROJECT,TRY,"enrichGO_c3")) + theme_classic() +    theme(axis.text=element_text(size=11))  + ggtitle(paste(PROJECT,"enrichGO_TOP5_BP_c3",sep=""))
+
+ewp_4@result$FDR2<- -log10(ewp_4@result$p.adjust )
+GO04_4<- ggplot(ewp_4@result[1:10,], aes(x=reorder(Description, FDR2),FDR2,  fill=FDR2)) +    geom_bar(stat = "identity") +  coord_flip() +    scale_fill_continuous(low="blue", high="deeppink") +    labs(x = "", y = "", fill = "FDR2",title = paste(PROJECT,TRY,"enrichGO_c4")) + theme_classic() +    theme(axis.text=element_text(size=11))  + ggtitle(paste(PROJECT,"enrichGO_TOP5_BP_c4",sep=""))
+
+ewp_5@result$FDR2<- -log10(ewp_5@result$p.adjust )
+GO04_5<- ggplot(ewp_5@result[1:10,], aes(x=reorder(Description, FDR2),FDR2,  fill=FDR2)) +    geom_bar(stat = "identity") +  coord_flip() +    scale_fill_continuous(low="blue", high="deeppink") +    labs(x = "", y = "", fill = "FDR2",title = paste(PROJECT,TRY,"enrichGO_c5")) + theme_classic() +    theme(axis.text=element_text(size=11))  + ggtitle(paste(PROJECT,"enrichGO_TOP5_BP_c5",sep=""))
+
+ewp_6@result$FDR2<- -log10(ewp_6@result$p.adjust )
+GO04_6<- ggplot(ewp_6@result[1:10,], aes(x=reorder(Description, FDR2),FDR2,  fill=FDR2)) +    geom_bar(stat = "identity") +    coord_flip() +    scale_fill_continuous(low="blue", high="deeppink") +    labs(x = "", y = "", fill = "FDR2",title = paste(PROJECT,TRY,"enrichGO_c5")) + theme_classic() +    theme(axis.text=element_text(size=11))  + ggtitle(paste(PROJECT,"enrichGO_TOP5_BP_c6",sep=""))
+
+```
+
+
+## Print GO to check the related Biological function to the clusters
+
+```{r,fig.dim = c(7, 8),message=FALSE,class.source="bg-info",warning=FALSE}
+print(GO001)
+print(GO00b1)
+```
+
+## write the the GO into Tables
+```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=FALSE}
+pdf(file=paste(PORT3,"004_forFig2G_",PROJECT, "GO",".pdf",sep=""), width=10, height=7)  
+print(GO001)
+print(GO00b1)
+print(GO04_1)
+print(GO04_2)
+print(GO04_3)
+print(GO04_4)
+print(GO04_5)
+print(GO04_6)
+
+dev.off()
+NAME_GO<- c("ID", "pvalue","GeneRatio", "p.adjust","Description","geneID")
+
+egoFDR2<- subset(formula_resddBGI11FC1_25_1_5_bonfe@compareClusterResult, ID=" ", select=NAME_GO)
+egoFDR3_1<- subset(ewp_1@result, select=NAME_GO)
+egoFDR3_2<- subset(ewp_2@result, select=NAME_GO)
+egoFDR3_3<- subset(ewp_3@result, select=NAME_GO)
+egoFDR3_4<- subset(ewp_4@result, select=NAME_GO)
+egoFDR3_5<- subset(ewp_5@result, select=NAME_GO)
+egoFDR3_6<- subset(ewp_6@result,select=NAME_GO)
+
+egoFDR3_1$REG<-"c1"
+egoFDR3_2$REG<- "c2"
+egoFDR3_3$REG<- "c3"
+egoFDR3_4$REG<- "c4"
+egoFDR3_5$REG<- "c5"
+egoFDR3_6$REG<- "c6"
+egoFDR3diff <- rbind(egoFDR3_1,egoFDR3_2,egoFDR3_3,egoFDR3_4,egoFDR3_5,egoFDR3_6)
+#write.xlsx(egoFDR2,file=paste(PTHA,"004_forFig2G_",PROJECT,'FIGURES_GOs_bonferro_MATRIX_2.xlsx',sep=""),overwrite = T)
+#write.table(egoFDR2,file=paste(PTHA,"004_forFig2G_",PROJECT,"FIGURES_GOs_bonferro_MATRIX_2.txt",sep=""),sep="\t",row.names = F,col.names=T,dec=".",quote = F)
+#write.xlsx(formula_resddBGI11FC1_25_1_5_FDR@compareClusterResult,file=paste(PTHA,PROJECT,'FIGURES_GOs_FDR_MATRIX.xlsx',sep=""),overwrite = T)
+write.xlsx(egoFDR3diff,file=paste(PTHA,"004_forFig2G_",PROJECT,"to_select_GO.xls",sep=""),overwrite = T)
+#write.table(egoFDR3diff,file=paste(PTHA,"004_forFig2G_",PROJECT,"_FDR_MATRIX_forREVIGO_moreRPKM_Q1.txt",sep=""),sep="\t",row.names = F,col.names=T,dec=".",quote = F)
+```
+

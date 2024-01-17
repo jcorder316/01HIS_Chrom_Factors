@@ -1,5 +1,5 @@
                                                                       Main
-If you are interested to reproduce the figures from "**Leveraging chromatin state transitions for the identification of regulatory networks orchestrating heart regeneration**" Published in Nucleics Acids Research (In consideration).
+If you are interested to reproduce the figures from "**Leveraging chromatin state transitions for the identification of regulatory networks orchestrating heart regeneration**" Published in Nucleics Acids Research (In consideration).<br />
 All you need to do is to download the repository and run the Scripts. I added the main Input files from each figure, in order to use them.
 
 

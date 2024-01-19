@@ -6,6 +6,3 @@ All you need to do is to download the repository and run the Scripts. I added th
 
 
 How to cite this repository?<br />
-
-- **Summary figures to Produce from 001Fig1_H3k27ac_CLUSTERS_NETWORKS.**<br />
-- ![SUMMARY_FIG1](https://github.com/jcorder316/01HIS_Chrom_Factors/assets/48988005/7f52fad5-67a3-4e9a-bb43-22665ba31fda)

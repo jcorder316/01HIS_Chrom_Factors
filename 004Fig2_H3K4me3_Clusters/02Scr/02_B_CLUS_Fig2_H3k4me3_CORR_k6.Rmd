@@ -97,7 +97,7 @@ NAME33b<-c("00", "01", "04", "14", "45")
 # Load data
 ## Load RNA-seq from 02RE_analysis_PRJNA509429_CLUS 
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
-meta = "../../../000MASTER_Input_FILES/02RE_analysis_PRJNA509429_CLUS.csv"
+meta = "../../000Input_Files/02RE_analysis_PRJNA509429_CLUS.csv"
 mat_m = read.delim(meta,header=T,check.names=FALSE, stringsAsFactors=FALSE)
 mat_m$SYMBOL<- mat_m$zfin_id_symbol
 mat_m$Clu_EXP <- mat_m$Clu

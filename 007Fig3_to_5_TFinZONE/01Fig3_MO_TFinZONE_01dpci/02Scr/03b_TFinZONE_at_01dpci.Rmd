@@ -179,8 +179,6 @@ MAT_1A1<- subset(MAT_1A, select=c("SYMBOL",NAME_G2b))
 NAME_G2c<- as.character(t(NAME_G2[,2]))
 colnames(MAT_1A1)<- c("SYMBOL",t(NAME_G2[,2]))
 MAT_1_c25b<- tidyr::gather(MAT_1A1,NAME_G2c,key="Sample",value="log10Pvalue")
-
-
 ###### select only Pvalue<0.05 from the data
 MAT_1_c25b<- subset(MAT_1_c25b,log10Pvalue>1)
 #length(unique(GN5a$REG))

@@ -180,9 +180,6 @@ draw(hcm_TMM1, heatmap_legend_side = "left", annotation_legend_side = "left",mer
    draw(hcm_TMM, heatmap_legend_side = "left", annotation_legend_side = "left",merge_legend = TRUE)
    set.seed(3)
     dev.off()
-
-
-
 ```
 
 ## Print heatmap 

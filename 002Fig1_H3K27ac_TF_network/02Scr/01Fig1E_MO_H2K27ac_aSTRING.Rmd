@@ -108,7 +108,6 @@ mat_PEAKS2[[MO]]$CLU<- MO
 GN5a<- do.call(rbind, mat_PEAKS2)
 ```
 
-
 ## Count the interactions from the matrixes obtained from String
 ```{r,message=FALSE,class.source="bg-info",warning=FALSE}
 MA6<- data.frame(table(GN5a$node1,GN5a$CLU))

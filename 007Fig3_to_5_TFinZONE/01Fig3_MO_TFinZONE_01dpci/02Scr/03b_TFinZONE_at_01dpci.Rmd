@@ -18,7 +18,7 @@ BiocStyle::markdown()
 Mailto: julio.cordero@medma.uni-heidelberg.de<br />
 
 # **Objectives**
-- To find the Transcriptional Factor in the neighborhood Zone (TFinZONE) at 01dcpi as a reference point.<br />
+- To find the Transcription Factor in the neighborhood Zone (TFinZONE) at 01dcpi as a reference point.<br />
 
 # General comments on the script
 -Instead of an expression of genes, we propose an enrichment score. Which combines the motif score of the TFs and the log10-Pvalue of the motif in the chromatin state. Each Cluster identified represents a group of **PEAKS** which contain a specific signature of **MOTIFS from TFs**. 

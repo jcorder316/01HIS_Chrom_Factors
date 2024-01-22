@@ -20,7 +20,7 @@ Mailto: julio.cordero@medma.uni-heidelberg.de<br />
 
 # **Objectives**
 -  To analyze the TFs-Motifs associated with the chromatin States areas as scRNA-seq 
-- To find Transcriptional Factor in neighborhood Zone (TFinZONE)
+- To find Transcription Factor in the neighborhood Zone (TFinZONE)
 
 # General Comments on the Script
 -Instead of an expression of genes, we propose an enrichment score. Which combines the motif score of the TFs and the log10-Pvalue of the motif in the chromatin state. Each Cluster identified represents a group of **PEAKS** which contain a specific signature of **MOTIFS from TFs**. 

@@ -19,7 +19,7 @@ BiocStyle::markdown()
 Mailto: julio.cordero@medma.uni-heidelberg.de<br />
 
 # **Objectives**
-- To combine all DNA motifs into one matrix to be used in Transcriptional Factor in the neighborhood Zone (TFinZONE) at 04dcpi as a reference point.<br />
+- To combine all DNA motifs into one matrix to be used in Transcription Factor in the neighborhood Zone (TFinZONE) at 04dcpi as a reference point.<br />
 
 # General comments on the script
 -This Script was used to combine the motifs search output from **Homer** on the 5 divergent groups. The output Excel file serves as input for the script **TFinZONE**. The Script is highly customized.

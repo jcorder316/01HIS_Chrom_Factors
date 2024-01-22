@@ -25,7 +25,6 @@ Mailto: julio.cordero@medma.uni-heidelberg.de<br />
 - Allow the identification of TFs in the neighborhood Zone. To understand the mechanism of how TFs, cooperate among them.
 -This Script was used with the Motifs associated with Histone marks. However, it could also be modified to input Motifs associated with **ATAC-seq or ChIP-seq**. In the case of ATAC-seq, the motifs coming from footprinting analysis or Homer motifs search are highly recommended.
 
-
 # Summary of figures produced by this script.
 ```{r,fig.dim = c(13, 8), results="asis", align='center',out.width="150%", echo=F}
 library(knitr)
@@ -107,10 +106,7 @@ WORK11A11="../01DATA_ORI/07aMO_forSeurat_ANALY/08TSS_Enh_w_01dpci_fHeatmap_ALL.x
 
 
 MAT_1A= read_excel(WORK11A11)
-#MAT_1A= read.delim(WORK11A11)
-
 colnames(MAT_1A)[1]<- "SYMBOL"
-
 dim(MAT_1A)
 ##### Set resolution for CLustering
 RES=0.5

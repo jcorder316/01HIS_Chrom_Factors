@@ -19,7 +19,7 @@ BiocStyle::markdown()
 
 # **Objective**
 -  To define all the chromatin states based on the marks from the 4 Histone marks used in this study. :<br />
-- To generate all the peak files for Transcriptional factors in Neighborhood ZONE(TFinZONE) in all of the stages as reference (01dcpi, 04dcpi, and 14dcpi). <br />
+- To generate all the peak files for Transcription factors in the Neighborhood ZONE (TFinZONE) in all of the stages as reference (01dcpi, 04dcpi, and 14dcpi). <br />
 
 # General Comments on the script
 -In this Script, you will find how we defined the different Chromatin States by the combination of **H3K4me, H3K27ac, H3K27me3, and H3K4me1**. We represent the stages with an alluvial plot. Since the States are highly dynamic. The chromatin states are highly diverse. Therefore, we propose 5 groups we called:<br /><br />

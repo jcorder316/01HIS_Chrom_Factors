@@ -97,7 +97,7 @@ CC= c(downcol, "lightgray",upcol)
 # Import Input Data 
 ## Re-analyzed data of bulk RNA_seq matrix from PRJNA509429
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
-meta = "../../../000Input_Files/02RE_analysis_PRJNA509429_CLUS.csv"
+meta = "../../000Input_Files/02RE_analysis_PRJNA509429_CLUS.csv"
 mat_m = read.delim(meta,header=T,check.names=FALSE, stringsAsFactors=FALSE)
 mat_m$SYMBOL<- mat_m$zfin_id_symbol
 mat_m$Clu_EXP <- mat_m$Clu
@@ -762,7 +762,7 @@ write.table(MA499u2$ENSEMBL,file=paste(PORT,PROJECT,"CLu",i,".txt",sep=""),sep="
 upcol<- "#d5648b" # magenta from RdBu
 nc<- "#bdbdbd" # gray
 downcol<- "#79d0d9" # green from RdBu
-PEAKS="../../../000Input_Files/02TSS_ZF_DanRer11_NON/001Emsem_danRer11_TSS2kb_Annot.bed"
+PEAKS="../../000Input_Files/001Emsem_danRer11_TSS2kb_Annot.bed"
 mat_TSS = read.table(PEAKS,header=F,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
 #head(mat_TSS)
 colnames(mat_TSS)[5]<- "EMS"

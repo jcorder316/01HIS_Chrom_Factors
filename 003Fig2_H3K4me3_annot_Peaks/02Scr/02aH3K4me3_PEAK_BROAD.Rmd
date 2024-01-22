@@ -147,7 +147,6 @@ NAME11b<- t(NAME11b)
 mat_PEAKS2_1<- subset(mat_PEAKS2,select=NAME00)
 colnames(mat_PEAKS2_1)<- NAME01
 mat_PEAKS2_1$PEAK_ID2<- paste(mat_PEAKS2_1$chr,mat_PEAKS2_1$start,mat_PEAKS2_1$end,sep="_")
-#length(unique(mat_PEAKS2_1$PEAK_ID2))
 head(mat_PEAKS2_1,4)
 ```
 

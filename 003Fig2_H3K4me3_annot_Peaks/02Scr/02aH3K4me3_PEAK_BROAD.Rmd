@@ -105,7 +105,7 @@ colnames(mat_BT)<- NAME99
 mat_BT$ID<- "ALL"
 mat_BT_1<- subset(mat_BT,select=c("ID", "SYMBOL","EMS"))
 
-TSS_EMS="../../../000Input_Files/02TSS_ZF_DanRer11_NON/001Emsem_danRer11_TSS2kb_Annot.bed"
+TSS_EMS="../../000Input_Files/001Emsem_danRer11_TSS2kb_Annot.bed"
 mat_TSS_EMS = read.delim(TSS_EMS,header=F,check.names=FALSE, stringsAsFactors=FALSE)
 NAME11<- data.frame(colnames(mat_TSS_EMS))
 mat_TSS_EMS$ID<- "ALL"
@@ -154,7 +154,7 @@ head(mat_PEAKS2_1,4)
 ## Crossed with RNA-seq from PRJNA509429
 - Reanalysis of PRJNA509429 data with k-means
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
-meta = "../../../000Input_Files/02RE_analysis_PRJNA509429_CLUS.csv"
+meta = "../../000Input_Files/02RE_analysis_PRJNA509429_CLUS.csv"
 mat_m = read.delim(meta,header=T,check.names=FALSE, stringsAsFactors=FALSE)
                    
 mat_m$SYMBOL<- mat_m$zfin_id_symbol

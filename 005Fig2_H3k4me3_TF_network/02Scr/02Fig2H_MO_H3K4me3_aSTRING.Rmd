@@ -133,7 +133,7 @@ MA_OER_A<- do.call(rbind, DIS_list1)
 MA_CHECK1<- DIS_list[[1]]
 ```
 # Visualization of the data
-## Code for the top10 of the Heatmap
+## Code for the top10 of the heatmap
 
 -from Interactome proteins selected based in the top 10 interactome afer the String 
 ```{r,message=FALSE,echo=FALSE,warning=FALSE, include=FALSE}

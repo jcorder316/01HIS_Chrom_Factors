@@ -24,16 +24,11 @@ Mailto: julio.cordero@medma.uni-heidelberg.de<br />
 # General comments on the script
 -This Script was used to combine the motifs search output from **Homer** on the 5 divergent groups. The output Excel file serves as input for the script **TFinZONE**. The script is highly customized.
 
-
-
-
 # Summary of figures produced by this script.
 ```{r,fig.dim = c(13, 8), results="asis", align='center',out.width="150%", echo=F}
 library(knitr)
 knitr::include_graphics("./heatmap_01dcpi.png")
 ```
-
-
 
 ```{r,message=FALSE,echo=FALSE,warning=FALSE}
 library(openxlsx)
@@ -74,7 +69,6 @@ PROJECT="02aMO_INTEGRA_01dpci"
 PORT11=paste(PORT11b,PROJECT,"/",sep="")
 
 dir.create(PORT11)
-
 ##
 NAME33<- c("Mo_Name","Consensus","P-value","Log_P-value","q-value_Benja","Nor_of_Tar","Per_of_Tar","No_of_Tar_Backg","Per_of_Tar_Backg")
 NAME34<- c("HOmer_NAME",NAME33)
@@ -101,7 +95,6 @@ NAME34<- paste("z",NAME_G2b,sep="_")
 ```
 
 # Run a loop to read all text files from the motif output
-
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
 TRY="ALL_per_GROUP"
 DE_list <- list()
@@ -125,9 +118,6 @@ print(i)
 #print(paste("DCPI_x_MO",i,A))
 
 options(scipen = 999)
-#CHECK11<- do.call(rbind, MO_files)
-#DE_list2[[i]]<- data.frame(CHECK11[grep(MOTIF_dcpi[i,1], CHECK11[,1]), ])
-#CEHCK00<- DE_list2[[i]]
 DE_list4[[A]] = read.delim(paste(MOTIF_FOL[A,1],"/knownResults.txt",sep=""),header=T,sep="\t")
 
 NAME44<- colnames(DE_list4[[A]])

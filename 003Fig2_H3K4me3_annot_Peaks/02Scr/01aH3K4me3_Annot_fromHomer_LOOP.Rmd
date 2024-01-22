@@ -32,7 +32,6 @@ knitr::include_graphics("./ANNOTATION_LOOP_H3K4me3.png")
 ## Set processors 
 ```{r,message=FALSE,class.source="bg-info",warning=FALSE,echo=F}
 library(future)
-
 plan("sequential", workers = 16)
 ```
 
@@ -78,7 +77,7 @@ NAME33b<-c("00", "01", "04", "14", "45")
 ```
 
 # Input Peak data
-- ** all Peaks file in this folder(../01DATA/01PEAKS_H3K4me3_ZF_dpci/)** 
+- ** all peaks file in this folder(../01DATA/01PEAKS_H3K4me3_ZF_dpci/)** 
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
 ### Path to locate all the peak annotated files. The peak file were annotated with annotatePeaks.pl from homer using the merge gtf files from danRer11 genome from REFSEQ, NONCODE, and EMSENBEL
 WORK="../01DATA/01PEAKS_H3K4me3_ZF_dpci/"
@@ -114,7 +113,7 @@ MA6 <- GN5e
 colnames(MA6)<- c("SAMPLE", "Var1","Freq")
 cat("This is the way the data should looks like:","/n")
 
-head(GN5a,4)
+head(GN5a,2)
 ```
 
 ## Quantify the number of regions per time point (dpci)

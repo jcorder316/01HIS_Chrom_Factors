@@ -140,7 +140,7 @@ colnames(mat_BT_3b)<- NAME55
 NAME12<- c(1,2,3,4,5,6,7,8,9,10,11,12,15,17)
 NAME00<- paste("V",NAME12,sep="")
 NAME01<- c("chr",	"start",	"end","chrP",	"startP",	"endP",	"PEAK_ID",	"ID" ,"SYMBOL", "EMS",	"length",	"CLU_1",	"Distance.to.TSS",	"CLU_GE")
-PEAKS=unzip("../../01H3K4me3_CLUSTERS/01DATA/01ANNO_PEAKS_H3K4me3_ZF_ALL_x_BEDTO.zip")
+PEAKS=unzip("../../004Fig2_H3K4me3_clusters/01DATA/01ANNO_PEAKS_H3K4me3_ZF_ALL_x_BEDTO.zip")
 mat_PEAKS2 = read.delim(PEAKS,header=F,check.names=FALSE, stringsAsFactors=FALSE,sep="\t")
 NAME11b<- data.frame(colnames(mat_PEAKS2))
 NAME11b<- t(NAME11b)

@@ -33,8 +33,6 @@ BiocStyle::markdown()
 The inactive area is the combination of enhancer poised (Ep), enhancer repressed (Er), enhancer primed (Epr), promoter bivalent (BiV), and promoter poised (Ps). For active areas is combined by enhancer active (Ea) and promoter active (Pa). Unmarked was considered when a region was enriched less than the **Quartile 1 (Q1)** of the markers (H3K27ac, H3K27me3, and H3K4me1). For H3K4me3 was below 1 of the z-score of normalized enrichment. the value of 1 for taken for H3K4me3 after manual checking of the marker in the genome browser. **All 5 divergent regions** were calculated by taking 3 points of reference. 01dcpi, 04dcpi, and 14dcpi. 
 
 # Summary of figures produced by this script.
-
-
 ```{r,fig.dim = c(13, 8), results="asis", align='center',out.width="150%", echo=F}
 library(knitr)
 knitr::include_graphics("./Chr_STATES_ZF_DEFINI.png")
@@ -72,7 +70,6 @@ library(data.table)
 # Set the working environment and Folder to output the results
 - Important to keep the output files well organized follwoing the FAIR principles
 - Findable, Accessible, Interoperable, and Reusable **(FAIR)**
-
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
 workdir = "./"
 setwd(workdir)
@@ -400,7 +397,8 @@ ap1b <- ggplot(MA6, aes(factor(SAMPLE), Freq, fill = factor(Var1))) +    geom_ba
 ```{r,fig.dim = c(6, 5),message=FALSE,class.source="bg-info",warning=FALSE}
 print(ap1b)
 ```
-# Preparing the data for the Alluvial plot
+# Preparing the data for the alluvial plot
+
 ## Select columns to create matrix 
 ```{r,class.source="bg-info",echo=TRUE,warning=FALSE}
 NAME66<- c("PEAK_ID2","ENH3","Sample1","zmean1","zmean2","zmean3","zmean4")

@@ -403,16 +403,17 @@ P01a<- DimPlot(smartseq2, reduction = "umap", label = F,cols = COe2,pt.size=0.7)
 P00at<- DimPlot(smartseq2, reduction = "tsne", label = T,cols = COe2,pt.size=0.7)
 P01at<- DimPlot(smartseq2, reduction = "tsne", label = F,cols = COe2,pt.size=0.7)
 
-P03<-DimPlot(smartseq2, reduction = "umap",group.by ='seurat_clusters', split.by = 'GROUP',cols = COe2,pt.size=0.7)
-P03a<-  DimPlot(smartseq2, reduction = "umap",group.by ='GROUP', split.by = 'seurat_clusters',cols = CO_ALU3,pt.size=0.7)
+P03<-DimPlot(smartseq2, reduction = "umap",group.by ='GROUP',cols = CO_ALU3,pt.size=0.7)
+P03a<-  DimPlot(smartseq2, reduction = "tsne",group.by ='GROUP',cols = CO_ALU3,pt.size=0.7)
 
 P03t<-DimPlot(smartseq2, reduction = "tsne",group.by ='seurat_clusters', split.by = 'GROUP',cols = COe2,pt.size=0.7)
 P03at<-  DimPlot(smartseq2, reduction = "tsne",group.by ='GROUP', split.by = 'seurat_clusters',cols = CO_ALU3,pt.size=0.7)
     
 arrange1 <- ggarrange(P00a,P01a, ncol = 2,nrow =1,common.legend = T, align = c("hv"),legend="right")
 arrange1t <- ggarrange(P00at,P01at, ncol = 2,nrow =1,common.legend = T, align = c("hv"),legend="right")
-arrange1c <- ggarrange(P03, ncol = 1,nrow =1,common.legend = T, align = c("hv"),legend="right")
+arrange1c <- ggarrange(P03a,P03a, ncol = 2,nrow =1,common.legend = T, align = c("hv"),legend="right")
 print(arrange1t)
+print(arrange1c)
 print(arrange1)
 }
 dev.off()
@@ -423,7 +424,6 @@ arrange1ca <- ggarrange(P03a, ncol = 1,nrow =1,common.legend = T, align = c("hv"
 arrange1cat <- ggarrange(P03at, ncol = 1,nrow =1,common.legend = T, align = c("hv"),legend="right")
 
 print(arrange1bt)
-print(arrange1c)
 print(arrange1cat)
 }
 dev.off()
@@ -433,8 +433,9 @@ dev.off()
 ```{r,fig.dim = c(10, 5),message=FALSE,class.source="bg-info",warning=FALSE}
 print(arrange1t)
 print(arrange1)
-print(arrange1bt)
 print(arrange1c)
+print(arrange1bt)
+
 print(arrange1cat)
 ```
 

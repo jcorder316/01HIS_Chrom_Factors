@@ -17,13 +17,13 @@ BiocStyle::markdown()
 
 Mailto: julio.cordero@medma.uni-heidelberg.de<br />
 
-# **Objectives**
+# **Objective**
 - To find the Transcription Factor in the neighborhood Zone (TFinZONE) at 01dcpi as a reference point.<br />
 
 # General comments on the script
 -Instead of an expression of genes, we propose an enrichment score. Which combines the motif score of the TFs and the log10-Pvalue of the motif in the chromatin state. Each Cluster identified represents a group of **PEAKS** which contain a specific signature of **MOTIFS from TFs**. 
 - Allow the identification of TFs in the neighborhood Zone. To understand the mechanism of how TFs, cooperate among them.
--This Script was used with the Motifs associated with Histone marks. However, it could also be modified to input Motifs associated with **ATAC-seq or ChIP-seq**. In the case of ATAC-seq, the motifs coming from footprinting analysis or Homer motifs search are highly recommended.
+-This Script was used with the motifs associated with histone marks. However, it could also be modified to input Motifs associated with **ATAC-seq or ChIP-seq**. In the case of ATAC-seq, the motifs coming from footprinting analysis or Homer motifs search are highly recommended.
 
 # Summary of figures produced by this script.
 ```{r,fig.dim = c(13, 8), results="asis", align='center',out.width="150%", echo=F}

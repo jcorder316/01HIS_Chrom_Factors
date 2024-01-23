@@ -99,7 +99,7 @@ WORK1="../01DATA_ORI/08MO_onP/"
 NAME_G2 <-data.frame(list.files(path=WORK1,pattern="*_FIND"))
 
 colnames(NAME_G2)<- "ENH4"
-#NAME_G2$GROUP <- gsub("CORR1_14d_", "", NAME_G2$ENH4)
+#NAME_G2$GROUP <- gsub("CORR1_04d_", "", NAME_G2$ENH4)
 NAME_G2$GROUP <- gsub("*_mask_500_FIND", "", NAME_G2$ENH4)
 ### this is important to check the SYMBOL
 NAME_G22<- data.frame(c("00A_Ia","01Ia_A","02U_Ea","03U_Ia","04U_Pa"))
@@ -235,11 +235,11 @@ AC_RE_VOL_SC1<- MAT_MO1_u2
 AC_RE_VOL_SC1$zMOtixP = scale(AC_RE_VOL_SC1$MOti,center = F)
 #length(unique(CHECK_u2$PositionID))
 AC_RE_VOL_SC<- subset(AC_RE_VOL_SC1,select=c("SYMBOL","PositionID","GROUP","REG","zMOtixP"))
-#AC_RE_VOL_SC$GROUP <- gsub("CORR1_14d_", "", AC_RE_VOL_SC$GROUP)
+#AC_RE_VOL_SC$GROUP <- gsub("CORR1_04d_", "", AC_RE_VOL_SC$GROUP)
 #AC_RE_VOL_SC$GROUP <- gsub("_1_mask_500_FIND", "", AC_RE_VOL_SC$GROUP)
 AC_RE_VOL_SC_META<- AC_RE_VOL_SC[!duplicated(AC_RE_VOL_SC[,c("PositionID","GROUP", "REG")]),]
 
-#AC_RE_VOL_SC_META$GROUP2 <- gsub("CORR1_14d_u_", "", AC_RE_VOL_SC_META$GROUP)
+#AC_RE_VOL_SC_META$GROUP2 <- gsub("CORR1_04d_u_", "", AC_RE_VOL_SC_META$GROUP)
 #AC_RE_VOL_SC_META$GROUP <- gsub("_mask_500_FIND", "", AC_RE_VOL_SC_META$GROUP2)
 AC_RE_VOL_SC$PositionID2<- paste(AC_RE_VOL_SC$GROUP,AC_RE_VOL_SC$PositionID,sep="-")
 colnames(AC_RE_VOL_SC)[5]<- "zMOtixP"

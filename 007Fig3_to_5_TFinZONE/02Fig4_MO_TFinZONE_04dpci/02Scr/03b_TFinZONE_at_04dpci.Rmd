@@ -96,7 +96,6 @@ mat_m<- data.frame("mask_500_FIND")
 ## Here you write the Path to the 
 WORK1="../01DATA_ORI/08MO_onP/"
 
-#WORK1="Y:/002ZF/000FIGURES_ANALY/00GITHUB_01HIS_Chroma_Factors/01HIS_Chrom_Factors_TEST/04MOtifs_Analy_as_SC_MOAC_Fig3_5/02Fig4_MO_MOAC_14dpci/14dATA_ORI/08MOTIFS_on_PEAKS/"
 NAME_G2 <-data.frame(list.files(path=WORK1,pattern="*_FIND"))
 
 colnames(NAME_G2)<- "ENH4"
@@ -107,11 +106,9 @@ NAME_G22<- data.frame(c("00A_Ia","01Ia_A","02U_Ea","03U_Ia","04U_Pa"))
 
 NAME_G2c<- as.character(t(NAME_G2[,2]))
 
-#WORK11A11="../14dATA_ORI/07aMO_forMOAC/08TSS_Enh_w_14dpci_fHeatmap_ALL.xlsx"
 WORK11A11="../01DATA_ORI/07aMO_forSeurat_ANALY/08TSS_Enh_w_04dpci_fHeatmap_ALL.xlsx"
 
 MAT_1A= read_excel(WORK11A11)
-#MAT_1A= read.delim(WORK11A11)
 
 colnames(MAT_1A)[1]<- "SYMBOL"
 

@@ -5,20 +5,20 @@ SI2=200
 CO=16
 RA=30000
 LE=8
-NAME="CORR1_01d"
+NAME="CORR1_04d"
 mkdir MO_PERAME
 ############## group 1   #############
 PP=..
 for (( i = 0; i <= 4; i++ ))
  do
-for R1 in $PP/01DATA_TEST/04d*/0${i}*_04dcpi_forMOTIF.bed
+for R1 in $PP/01DATA_ORI/04d*/0${i}*_04dcpi_forMOTIF.bed
 do
 yolo=$(echo "$R1" | rev | cut -c 5- | rev)
 yolob=$(echo "$R1" | rev | cut -c 13- | rev)
 yolob1=$(echo "$R1" | rev | cut -c 14- | rev)
 yolo1=$(echo "$yolo" | cut -c 30- )
 yolo2=$(echo "$yolob" |  cut -c 30- )
-for MM in $PP/01DATA_TEST/04d*/0${i}*_mask_500/knownResults/*.txt
+for MM in $PP/01DATA_ORI/04d*/0${i}*_mask_500/knownResults/*.txt
 do
 mkdir ${R1%/*}/08MO_on_PEAKS
 yolo3=$(echo "$MM" | rev | cut -c 5- | rev)

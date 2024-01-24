@@ -6,7 +6,7 @@ SI=500
 LE=8
 for (( i = 0; i <= 4; i++ ))
 do
-for R1 in $PP/01DATA_ORI/01d*/0${i}*_01dcpi_forMOTIF.bed
+for R1 in $PP/01DATA_ORI/04d*/0${i}*_04dcpi_forMOTIF.bed
 do
 yolo=$(echo "$R1" | rev | cut -c 5- | rev)
 yolo1=$(echo "$yolo" | cut -c 20- )

@@ -6,7 +6,7 @@ SI=500
 LE=8
 for (( i = 0; i <= 4; i++ ))
 do
-for R1 in $PP/01DATA_TEST/04d*/0${i}*_04dcpi_forMOTIF.bed
+for R1 in $PP/01DATA_ORI/01d*/0${i}*_01dcpi_forMOTIF.bed
 do
 yolo=$(echo "$R1" | rev | cut -c 5- | rev)
 yolo1=$(echo "$yolo" | cut -c 20- )
@@ -19,7 +19,7 @@ findMotifsGenome.pl $R1 danRer11 ${R1%/*}/`basename $yolob`_mask_500 -size $SI -
 
 done 
 
-for R1 in $PP/01DATA_TEST/04*/0${i}*_mask_500/knownResults/known*.motif 
+for R1 in $PP/01DATA_ORI/04*/0${i}*_mask_500/knownResults/known*.motif 
  do
 yolo=$(echo "$R1" | rev | cut -c 7- | rev)
 yolo1=$(echo "$R1" | rev | cut -c 14- | rev)
